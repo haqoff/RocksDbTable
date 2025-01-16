@@ -11,14 +11,14 @@ public interface IUniqueIndex<TUniqueKey, out TValue> : IKeyValueStoreBase<TUniq
     /// </summary>
     /// <param name="uniqueKey">The unique key.</param>
     /// <returns>The value associated with the unique key, or <c>default</c> if the key does not exist.</returns>
-    TValue? GetByKey(in TUniqueKey uniqueKey);
+    TValue? GetByKey(TUniqueKey uniqueKey);
 
     /// <summary>
     /// Determines whether the store contains an exact match for the specified key.
     /// </summary>
     /// <param name="uniqueKey">The unique key to check.</param>
     /// <returns><c>true</c> if the store contains the specified key; otherwise, <c>false</c>.</returns>
-    bool HasExactKey(in TUniqueKey uniqueKey);
+    bool HasExactKey(TUniqueKey uniqueKey);
 
     /// <summary>
     /// Retrieves all keys in the store.

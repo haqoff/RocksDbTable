@@ -5,6 +5,6 @@ namespace Haqon.RocksDb.Serialization;
 
 public interface IRockSerializer<T>
 {
-    void Serialize<TWriter>(scoped ref TWriter writer, scoped in T value) where TWriter : IBufferWriter<byte>;
+    void Serialize(IBufferWriter<byte> writer, T value);
     T Deserialize(ReadOnlySpan<byte> span);
 }

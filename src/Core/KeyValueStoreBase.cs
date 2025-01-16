@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
 using Haqon.RocksDb.Options;
 using Haqon.RocksDb.Serialization;
 using Haqon.RocksDb.Tables;
@@ -12,10 +14,11 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 {
     // ReSharper disable once NotAccessedField.Local Store a reference to options to prevent the GC from collecting ColumnFamilyOptions, since ColumnFamilyOptions can contain unmanaged pointers to delegates.
     private readonly IStoreOptions _options;
-    protected readonly ColumnFamilyHandle ColumnFamilyHandle;
+    internal readonly ColumnFamilyHandle ColumnFamilyHandle;
     protected readonly RocksDbSharp.RocksDb RocksDb;
     protected readonly IRockSerializer<TKey> KeySerializer;
     protected readonly ISpanDeserializer<TValue> ValueDeserializer;
+    protected readonly ThreadLocal<ArrayPoolBufferWriter> LocalBufferWriter;
 
     protected KeyValueStoreBase(RocksDbSharp.RocksDb rocksDb, IRockSerializer<TKey> keySerializer, IStoreOptions storeOptions, ISpanDeserializer<TValue> valueDeserializer)
     {
@@ -24,25 +27,20 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         _options = storeOptions;
         ColumnFamilyHandle = rocksDb.CreateColumnFamily(storeOptions.ColumnFamilyOptions, storeOptions.ColumnFamilyName);
         ValueDeserializer = valueDeserializer;
+        LocalBufferWriter = new ThreadLocal<ArrayPoolBufferWriter>(static () => new ArrayPoolBufferWriter());
     }
 
-    
     public TValue? GetByKey(ReadOnlySpan<byte> key)
     {
         return RocksDb.Get(key, ValueDeserializer, ColumnFamilyHandle);
     }
 
-    /// <summary>
-    /// Retrieves a value associated with the specified key.
-    /// </summary>
-    /// <param name="key">The unique key.</param>
-    /// <returns>The value associated with the unique key, or <c>null</c> if the key does not exist.</returns>
-    public TValue? GetByKey(in TKey key)
+    public TValue? GetByKey(TKey key)
     {
-        var keyBuffer = new ArrayPoolBufferWriter();
+        var keyBuffer = LocalBufferWriter.Value!;
         try
         {
-            KeySerializer.Serialize(ref keyBuffer, in key);
+            KeySerializer.Serialize(keyBuffer, key);
             return GetByKey(keyBuffer.WrittenSpan);
         }
         finally
@@ -51,12 +49,12 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
     }
 
-    public bool HasExactKey(in TKey uniqueKey)
+    public bool HasExactKey(TKey uniqueKey)
     {
-        var keyBuffer = new ArrayPoolBufferWriter();
+        var keyBuffer = LocalBufferWriter.Value!;
         try
         {
-            KeySerializer.Serialize(ref keyBuffer, in uniqueKey);
+            KeySerializer.Serialize(keyBuffer, uniqueKey);
             return RocksDb.HasKey(keyBuffer.WrittenSpan, ColumnFamilyHandle);
         }
         finally
@@ -65,37 +63,34 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
     }
 
-    public bool HasAnyKeyByPrefix<TPrefixKey>(in TPrefixKey key, IRockSerializer<TPrefixKey> serializer)
+    public bool HasAnyKeyByPrefix<TPrefixKey>(TPrefixKey key, IRockSerializer<TPrefixKey> serializer)
     {
-        var notUniqueKeyBuffer = new ArrayPoolBufferWriter();
+        var prefixBuffer = LocalBufferWriter.Value!;
         try
         {
-            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle, SharedReadOptions.OnlyPrefixRead);
-            serializer.Serialize(ref notUniqueKeyBuffer, in key);
-            iterator.Seek(notUniqueKeyBuffer.WrittenSpan);
-            return iterator.Valid();
+            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
+            serializer.Serialize(prefixBuffer, key);
+            iterator.Seek(prefixBuffer.WrittenSpan);
+            if (!iterator.Valid())
+            {
+                return false;
+            }
+
+            return iterator.GetKeySpan().StartsWith(prefixBuffer.WrittenSpan);
         }
         finally
         {
-            notUniqueKeyBuffer.Dispose();
+            prefixBuffer.Dispose();
         }
     }
 
     public IEnumerable<TKey> GetAllKeys()
     {
-        var buffer = new ArrayPoolBufferWriter();
-        try
+        using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
+        for (iterator.SeekToFirst(); iterator.Valid(); iterator.Next())
         {
-            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
-            for (iterator.SeekToFirst(); iterator.Valid(); iterator.Next())
-            {
-                var fullKey = KeySerializer.Deserialize(iterator.GetKeySpan())!;
-                yield return fullKey;
-            }
-        }
-        finally
-        {
-            buffer.Dispose();
+            var fullKey = KeySerializer.Deserialize(iterator.GetKeySpan())!;
+            yield return fullKey;
         }
     }
 
@@ -111,48 +106,59 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TKey> GetAllKeysByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> prefixSerializer)
     {
-        var buffer = new ArrayPoolBufferWriter();
+        var prefixBuffer = LocalBufferWriter.Value!;
         try
         {
-            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle, SharedReadOptions.OnlyPrefixRead);
-            prefixSerializer.Serialize(ref buffer, in prefixKey);
-            for (iterator.Seek(buffer.WrittenSpan); iterator.Valid(); iterator.Next())
+            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
+            prefixSerializer.Serialize(prefixBuffer, prefixKey);
+            for (iterator.Seek(prefixBuffer.WrittenSpan); iterator.Valid(); iterator.Next())
             {
-                var fullKey = KeySerializer.Deserialize(iterator.GetKeySpan())!;
+                var keySpan = iterator.GetKeySpan();
+                if (!keySpan.StartsWith(prefixBuffer.WrittenSpan))
+                {
+                    break;
+                }
+
+                var fullKey = KeySerializer.Deserialize(keySpan)!;
                 yield return fullKey;
             }
         }
         finally
         {
-            buffer.Dispose();
+            prefixBuffer.Dispose();
         }
     }
 
     public IEnumerable<TValue> GetAllValuesByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> prefixSerializer)
     {
-        var buffer = new ArrayPoolBufferWriter();
+        var prefixBuffer = LocalBufferWriter.Value!;
         try
         {
-            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle, SharedReadOptions.OnlyPrefixRead);
-            prefixSerializer.Serialize(ref buffer, in prefixKey);
-            for (iterator.Seek(buffer.WrittenSpan); iterator.Valid(); iterator.Next())
+            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
+            prefixSerializer.Serialize(prefixBuffer, prefixKey);
+            for (iterator.Seek(prefixBuffer.WrittenSpan); iterator.Valid(); iterator.Next())
             {
+                if (!iterator.GetKeySpan().StartsWith(prefixBuffer.WrittenSpan))
+                {
+                    break;
+                }
+
                 yield return ValueDeserializer.Deserialize(iterator.GetValueSpan())!;
             }
         }
         finally
         {
-            buffer.Dispose();
+            prefixBuffer.Dispose();
         }
     }
 
-    public TValue? GetFirstValueByPrefix<TPrefixKey>(in TPrefixKey prefixKey, IRockSerializer<TPrefixKey> serializer, SeekMode mode = SeekMode.SeekToFirst)
+    public TValue? GetFirstValueByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> serializer, SeekMode mode = SeekMode.SeekToFirst)
     {
-        var prefixBuffer = new ArrayPoolBufferWriter();
+        var prefixBuffer = LocalBufferWriter.Value!;
         try
         {
-            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle, SharedReadOptions.OnlyPrefixRead);
-            serializer.Serialize(ref prefixBuffer, in prefixKey);
+            using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
+            serializer.Serialize(prefixBuffer, prefixKey);
 
             if (mode == SeekMode.SeekToPrev)
             {
@@ -168,6 +174,11 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
                 return default;
             }
 
+            if (mode == SeekMode.SeekToFirst && !iterator.GetKeySpan().StartsWith(prefixBuffer.WrittenSpan))
+            {
+                return default;
+            }
+
             var value = ValueDeserializer.Deserialize(iterator.GetValueSpan());
             return value;
         }
@@ -177,19 +188,32 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
     }
 
-    public IEnumerable<TValue> GetAllValuesByBounds(TKey start, TKey end)
+    public IEnumerable<TValue> GetAllValuesByBounds(TKey startInclusive, TKey endExclusive)
     {
-        var startBuffer = new ArrayPoolBufferWriter();
-        var endBuffer = new ArrayPoolBufferWriter();
+        var buffer = LocalBufferWriter.Value!;
+        nint startKeyUnmanaged = IntPtr.Zero;
+        nint endKeyUnmanaged = IntPtr.Zero;
 
         try
         {
-            KeySerializer.Serialize(ref startBuffer, start);
-            KeySerializer.Serialize(ref endBuffer, end);
+            KeySerializer.Serialize(buffer, startInclusive);
+            var startKeyPoint = new SpanPoint(buffer);
+
+            KeySerializer.Serialize(buffer, endExclusive);
+            var endKeyPoint = new SpanPoint(buffer, startKeyPoint);
+
+            var startKeySpan = startKeyPoint.GetWrittenSpan(buffer);
+            var endKeySpan = endKeyPoint.GetWrittenSpan(buffer);
 
             var options = new ReadOptions();
-            options.SetIterateLowerBound(startBuffer.GetUnderlyingArray(), (ulong)startBuffer.WrittenCount);
-            options.SetIterateUpperBound(endBuffer.GetUnderlyingArray(), (ulong)endBuffer.WrittenCount);
+
+            startKeyUnmanaged = CopyToUnmanagedMemory(startKeySpan);
+            endKeyUnmanaged = CopyToUnmanagedMemory(endKeySpan);
+            unsafe
+            {
+                options.SetIterateLowerBound((byte*)startKeyUnmanaged, (ulong)startKeySpan.Length);
+                options.SetIterateUpperBound((byte*)endKeyUnmanaged, (ulong)endKeySpan.Length);
+            }
 
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle, options);
             for (iterator.SeekToFirst(); iterator.Valid(); iterator.Next())
@@ -199,9 +223,25 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            startBuffer.Dispose();
-            endBuffer.Dispose();
+            buffer.Dispose();
+            if (startKeyUnmanaged != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(startKeyUnmanaged);
+            }
+
+            if (endKeyUnmanaged != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(endKeyUnmanaged);
+            }
         }
+    }
+
+    /// <summary>
+    /// For testing purposes only.
+    /// </summary>
+    internal byte[]? GetRaw(byte[] key)
+    {
+        return RocksDb.Get(key, ColumnFamilyHandle);
     }
 
     internal static ISpanDeserializer<TValue> CreateSpanDeserializerForIndex(IRockSerializer<TValue> valueSerializer, ITableValueProvider<TValue> table, IndexOptions indexOptions)
@@ -209,5 +249,20 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         return indexOptions.StoreMode == ValueStoreMode.FullValue
             ? new RocksDbSpanDeserializerAdapter<TValue>(valueSerializer)
             : new ByReferenceToTableValueDeserializer<TValue>(table);
+    }
+
+    private static nint CopyToUnmanagedMemory(ReadOnlySpan<byte> span)
+    {
+        var unmanagedPtr = Marshal.AllocHGlobal(span.Length);
+
+        unsafe
+        {
+            fixed (byte* sourcePtr = span)
+            {
+                Buffer.MemoryCopy(sourcePtr, (void*)unmanagedPtr, span.Length, span.Length);
+            }
+        }
+
+        return unmanagedPtr;
     }
 }

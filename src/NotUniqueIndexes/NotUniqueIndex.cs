@@ -9,7 +9,7 @@ using Haqon.RocksDb.Utils;
 
 namespace Haqon.RocksDb.NotUniqueIndexes;
 
-internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUniqueKey, TValue>, INotUniqueIndex<TNotUniqueKey, TValue>, IDependentIndex<TValue>
+internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUniqueKey, TValue>, INotUniqueIndex<TNotUniqueKey, TValue>, IDependentIndex<TValue>
 {
     private readonly Func<TValue, TNotUniqueKey> _keyProvider;
     private readonly IndexOptions _indexOptions;
@@ -21,14 +21,14 @@ internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUni
         _indexOptions = indexOptions;
     }
 
-    public bool HasAny(in TNotUniqueKey key)
+    public bool HasAny(TNotUniqueKey key)
     {
-        return HasAnyKeyByPrefix(in key, KeySerializer);
+        return HasAnyKeyByPrefix(key, KeySerializer);
     }
 
-    public TValue? GetFirstValue(in TNotUniqueKey key, SeekMode mode = SeekMode.SeekToFirst)
+    public TValue? GetFirstValue(TNotUniqueKey key, SeekMode mode = SeekMode.SeekToFirst)
     {
-        return GetFirstValueByPrefix(in key, KeySerializer, mode);
+        return GetFirstValueByPrefix(key, KeySerializer, mode);
     }
 
     public IEnumerable<TValue> GetAllValuesByKey(TNotUniqueKey key)
@@ -36,14 +36,14 @@ internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUni
         return GetAllValuesByPrefix(key, KeySerializer);
     }
 
-    public void Remove<TWrapper>(in ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var key = _keyProvider(value);
-        var buffer = new ArrayPoolBufferWriter();
+        var buffer = LocalBufferWriter.Value!;
         try
         {
-            KeySerializer.Serialize(ref buffer, in key);
-            AppendSpanToBuffer(ref buffer, in primaryKeySpan);
+            KeySerializer.Serialize(buffer, key);
+            AppendSpanToBuffer(buffer, primaryKeySpan);
             transaction.CommandWrapper.Delete(buffer.WrittenSpan, ColumnFamilyHandle);
         }
         finally
@@ -52,10 +52,10 @@ internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUni
         }
     }
 
-    public void Put<TWrapper>(in ReadOnlySpan<byte> primaryKeySpan, in ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    public void Put<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var newKey = _keyProvider(newValue);
-        var keyBuffer = new ArrayPoolBufferWriter();
+        var keyBuffer = LocalBufferWriter.Value!;
         try
         {
             var needAddReference = false;
@@ -68,8 +68,8 @@ internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUni
                 var oldKey = _keyProvider(oldValue);
                 if (!EqualityComparer<TNotUniqueKey>.Default.Equals(newKey, oldKey))
                 {
-                    KeySerializer.Serialize(ref keyBuffer, in oldKey);
-                    AppendSpanToBuffer(ref keyBuffer, in primaryKeySpan);
+                    KeySerializer.Serialize(keyBuffer, oldKey);
+                    AppendSpanToBuffer(keyBuffer, primaryKeySpan);
 
                     transaction.CommandWrapper.Delete(keyBuffer.WrittenSpan, ColumnFamilyHandle);
                     keyBuffer.Reset();
@@ -79,8 +79,8 @@ internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUni
 
             if (_indexOptions.StoreMode == ValueStoreMode.FullValue || (_indexOptions.StoreMode == ValueStoreMode.Reference && needAddReference))
             {
-                KeySerializer.Serialize(ref keyBuffer, in newKey);
-                AppendSpanToBuffer(ref keyBuffer, in primaryKeySpan);
+                KeySerializer.Serialize(keyBuffer, newKey);
+                AppendSpanToBuffer(keyBuffer, primaryKeySpan);
 
                 // For Reference store mode: although we already store the primary key of the table in the key of this ColumnFamily, 
                 // we still include the primary key in the record's value. This is because we cannot efficiently 
@@ -95,9 +95,7 @@ internal class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUni
         }
     }
 
-  
-
-    private static void AppendSpanToBuffer(ref ArrayPoolBufferWriter buffer, in ReadOnlySpan<byte> appendingSpan)
+    private static void AppendSpanToBuffer(ArrayPoolBufferWriter buffer, ReadOnlySpan<byte> appendingSpan)
     {
         var writeSpan = buffer.GetSpan(appendingSpan.Length);
         appendingSpan.CopyTo(writeSpan);

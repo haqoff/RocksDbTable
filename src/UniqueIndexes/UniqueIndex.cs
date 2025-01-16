@@ -5,11 +5,10 @@ using Haqon.RocksDb.Options;
 using Haqon.RocksDb.Serialization;
 using Haqon.RocksDb.Tables;
 using Haqon.RocksDb.Transactions;
-using Haqon.RocksDb.Utils;
 
 namespace Haqon.RocksDb.UniqueIndexes;
 
-internal class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, TValue>, IUniqueIndex<TUniqueKey, TValue>, IDependentIndex<TValue>
+internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, TValue>, IUniqueIndex<TUniqueKey, TValue>, IDependentIndex<TValue>
 {
     private readonly Func<TValue, TUniqueKey> _keyProvider;
     private readonly IndexOptions _indexOptions;
@@ -21,13 +20,13 @@ internal class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, T
         _indexOptions = indexOptions;
     }
 
-    public void Remove<TWrapper>(in ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
-        var bufferWriter = new ArrayPoolBufferWriter();
+        var bufferWriter = LocalBufferWriter.Value!;
         try
         {
             var uniqueKey = _keyProvider(value);
-            KeySerializer.Serialize(ref bufferWriter, in uniqueKey);
+            KeySerializer.Serialize(bufferWriter, uniqueKey);
             transaction.CommandWrapper.Delete(bufferWriter.WrittenSpan, ColumnFamilyHandle);
         }
         finally
@@ -36,10 +35,10 @@ internal class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, T
         }
     }
 
-    public void Put<TWrapper>(in ReadOnlySpan<byte> primaryKeySpan, in ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    public void Put<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var newKey = _keyProvider(newValue);
-        var keyBuffer = new ArrayPoolBufferWriter();
+        var keyBuffer = LocalBufferWriter.Value!;
         try
         {
             var needAddReference = false;
@@ -52,7 +51,7 @@ internal class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, T
                 var oldKey = _keyProvider(oldValue);
                 if (!EqualityComparer<TUniqueKey>.Default.Equals(newKey, oldKey))
                 {
-                    KeySerializer.Serialize(ref keyBuffer, in oldKey);
+                    KeySerializer.Serialize(keyBuffer, oldKey);
                     transaction.CommandWrapper.Delete(keyBuffer.WrittenSpan, ColumnFamilyHandle);
                     keyBuffer.Reset();
                     needAddReference = true;
@@ -61,7 +60,7 @@ internal class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, T
 
             if (_indexOptions.StoreMode == ValueStoreMode.FullValue || (_indexOptions.StoreMode == ValueStoreMode.Reference && needAddReference))
             {
-                KeySerializer.Serialize(ref keyBuffer, in newKey);
+                KeySerializer.Serialize(keyBuffer, newKey);
                 var serializedValue = _indexOptions.StoreMode == ValueStoreMode.FullValue ? valueSpan : primaryKeySpan;
                 transaction.CommandWrapper.Put(keyBuffer.WrittenSpan, serializedValue, ColumnFamilyHandle);
             }

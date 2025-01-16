@@ -9,12 +9,11 @@ using Haqon.RocksDb.Options;
 using Haqon.RocksDb.Serialization;
 using Haqon.RocksDb.Transactions;
 using Haqon.RocksDb.UniqueIndexes;
-using Haqon.RocksDb.Utils;
 using RocksDbSharp;
 
 namespace Haqon.RocksDb.Tables;
 
-internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey, TValue>, IRocksDbTable<TPrimaryKey, TValue>, ITableValueProvider<TValue>
+internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey, TValue>, IRocksDbTable<TPrimaryKey, TValue>, ITableValueProvider<TValue>
 {
     private readonly Func<TValue, TPrimaryKey> _keyProvider;
     private readonly IRockSerializer<TValue> _valueSerializer;
@@ -43,14 +42,14 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
         }
     }
 
-    public void Remove(in TPrimaryKey primaryKey, WriteOptions? writeOptions = null)
+    public void Remove(TPrimaryKey primaryKey, WriteOptions? writeOptions = null)
     {
         if (_dependentIndexes.Count == 0)
         {
             var transaction = RocksDb.CreateMockedTransaction(writeOptions);
             try
             {
-                Remove(in primaryKey, ref transaction);
+                Remove(primaryKey, ref transaction);
                 transaction.Commit();
             }
             finally
@@ -63,7 +62,7 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
             var transaction = RocksDb.CreateTransaction(writeOptions);
             try
             {
-                Remove(in primaryKey, ref transaction);
+                Remove(primaryKey, ref transaction);
                 transaction.Commit();
             }
             finally
@@ -73,13 +72,12 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
         }
     }
 
-    public void Remove<TWrapper>(in TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    public void Remove<TWrapper>(TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
-        var bufferWriter = new ArrayPoolBufferWriter();
-
+        var buffer = LocalBufferWriter.Value!;
         try
         {
-            KeySerializer.Serialize(ref bufferWriter, in primaryKey);
+            KeySerializer.Serialize(buffer, primaryKey);
 
             TValue? currentValue = default;
             var currentValueWasRetrieved = false;
@@ -87,7 +85,7 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
             if (_dependentIndexes.Count > 0)
             {
                 AcquireLockIfRequired(primaryKey, ref transaction);
-                currentValue = RocksDb.Get(bufferWriter.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
+                currentValue = RocksDb.Get(buffer.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
                 currentValueWasRetrieved = true;
                 if (currentValue is null)
                 {
@@ -96,21 +94,21 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
 
                 foreach (var dependentIndex in _dependentIndexes)
                 {
-                    dependentIndex.Remove(bufferWriter.WrittenSpan, currentValue, ref transaction);
+                    dependentIndex.Remove(buffer.WrittenSpan, currentValue, ref transaction);
                 }
             }
 
             if (_tableOptions.ChangesConsumer is not null && !currentValueWasRetrieved)
             {
                 AcquireLockIfRequired(primaryKey, ref transaction);
-                currentValue = RocksDb.Get(bufferWriter.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
+                currentValue = RocksDb.Get(buffer.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
                 if (currentValue is null)
                 {
                     return;
                 }
             }
 
-            transaction.CommandWrapper.Delete(bufferWriter.WrittenSpan, ColumnFamilyHandle);
+            transaction.CommandWrapper.Delete(buffer.WrittenSpan, ColumnFamilyHandle);
 
             if (_tableOptions.ChangesConsumer is not null)
             {
@@ -119,18 +117,18 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
         }
         finally
         {
-            bufferWriter.Dispose();
+            buffer.Dispose();
         }
     }
 
-    public void Put(in TValue newValue, WriteOptions? writeOptions = null)
+    public void Put(TValue newValue, WriteOptions? writeOptions = null)
     {
         if (_dependentIndexes.Count == 0)
         {
             var transaction = RocksDb.CreateMockedTransaction(writeOptions);
             try
             {
-                Put(in newValue, ref transaction);
+                Put(newValue, ref transaction);
                 transaction.Commit();
             }
             finally
@@ -143,7 +141,7 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
             var transaction = RocksDb.CreateTransaction(writeOptions);
             try
             {
-                Put(in newValue, ref transaction);
+                Put(newValue, ref transaction);
                 transaction.Commit();
             }
             finally
@@ -153,37 +151,40 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
         }
     }
 
-    public void Put<TWrapper>(in TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    public void Put<TWrapper>(TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var key = _keyProvider(newValue);
-
-        var keyBufferWriter = new ArrayPoolBufferWriter();
-        var valueBufferWriter = new ArrayPoolBufferWriter();
+        var buffer = LocalBufferWriter.Value!;
         try
         {
-            KeySerializer.Serialize(ref keyBufferWriter, in key);
-            _valueSerializer.Serialize(ref valueBufferWriter, in newValue);
+            KeySerializer.Serialize(buffer, key);
+            var keyPoint = new SpanPoint(buffer);
+            _valueSerializer.Serialize(buffer, newValue);
+            var valuePoint = new SpanPoint(buffer, keyPoint);
+
+            var keySpan = keyPoint.GetWrittenSpan(buffer);
+            var valueSpan = valuePoint.GetWrittenSpan(buffer);
 
             TValue? oldValue = default;
             var oldValueWasRetrieved = false;
             if (_dependentIndexes.Count > 0)
             {
                 AcquireLockIfRequired(key, ref transaction);
-                oldValue = RocksDb.Get(keyBufferWriter.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
+                oldValue = RocksDb.Get(keySpan, ValueDeserializer, ColumnFamilyHandle);
                 oldValueWasRetrieved = true;
                 foreach (var dependentIndex in _dependentIndexes)
                 {
-                    dependentIndex.Put(keyBufferWriter.WrittenSpan, valueBufferWriter.WrittenSpan, oldValue, newValue, ref transaction);
+                    dependentIndex.Put(keySpan, valueSpan, oldValue, newValue, ref transaction);
                 }
             }
 
             if (_tableOptions.ChangesConsumer is not null && !oldValueWasRetrieved)
             {
                 AcquireLockIfRequired(key, ref transaction);
-                oldValue = RocksDb.Get(keyBufferWriter.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
+                oldValue = RocksDb.Get(keySpan, ValueDeserializer, ColumnFamilyHandle);
             }
 
-            transaction.CommandWrapper.Put(keyBufferWriter.WrittenSpan, valueBufferWriter.WrittenSpan, ColumnFamilyHandle);
+            transaction.CommandWrapper.Put(keySpan, valueSpan, ColumnFamilyHandle);
             if (_tableOptions.ChangesConsumer is not null)
             {
                 transaction.RegisterChange(new RecordAddedOrUpdated<TPrimaryKey, TValue>(key, oldValue, newValue, _tableOptions.ChangesConsumer));
@@ -191,8 +192,7 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
         }
         finally
         {
-            keyBufferWriter.Dispose();
-            valueBufferWriter.Dispose();
+            buffer.Dispose();
         }
     }
 
@@ -214,7 +214,7 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
         return index;
     }
 
-    private void AcquireLockIfRequired<TWrapper>(in TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    private void AcquireLockIfRequired<TWrapper>(TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         if (!_tableOptions.EnableConcurrentChangesWithinRow)
         {
@@ -223,6 +223,11 @@ internal class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey
 
         var lockIndex = (primaryKey is null ? 0 : primaryKey.GetHashCode()) % _locks.Length;
         var lockObject = _locks[lockIndex];
+        if (transaction.HasLock(lockObject))
+        {
+            return;
+        }
+
         Monitor.Enter(lockObject);
         transaction.AddTakenLock(lockObject);
     }

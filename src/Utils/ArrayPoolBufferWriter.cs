@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace Haqon.RocksDb.Utils;
 
-internal struct ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
+internal sealed class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
 {
     private readonly int _initialCapacity;
     private byte[]? _rentedBuffer;

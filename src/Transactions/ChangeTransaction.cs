@@ -15,7 +15,9 @@ public ref struct ChangeTransaction<TWrapper>
     private List<ITableChange>? _changes;
 
     private object? _singleLock = null;
-    private List<object>? _multipleLocks = null;
+    private HashSet<object>? _multipleLocks = null;
+
+    internal int TakenLockCount => _singleLock is not null ? 1 : _multipleLocks?.Count ?? 0;
 
     internal ChangeTransaction(WriteBatch? writeBatch, TWrapper commandWrapper, RocksDbSharp.RocksDb rocksDb, WriteOptions? writeOptions)
     {
@@ -58,6 +60,21 @@ public ref struct ChangeTransaction<TWrapper>
         ExitLocks();
     }
 
+    internal bool HasLock(object lockObject)
+    {
+        if (_singleLock is not null)
+        {
+            return _singleLock == lockObject;
+        }
+
+        if (_multipleLocks is not null)
+        {
+            return _multipleLocks.Contains(lockObject);
+        }
+
+        return false;
+    }
+
     internal void AddTakenLock(object lockObject)
     {
         if (_singleLock is null && _multipleLocks is null)
@@ -66,7 +83,7 @@ public ref struct ChangeTransaction<TWrapper>
         }
         else if (_singleLock is not null && _multipleLocks is null)
         {
-            _multipleLocks = new List<object>();
+            _multipleLocks = new HashSet<object>(8);
             _multipleLocks.Add(_singleLock);
             _multipleLocks.Add(lockObject);
             _singleLock = null;

@@ -2,7 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Haqon.RocksDb", "src\Haqon.RocksDb.csproj", "{0216453F-C456-40DF-8FB6-A02A4708B602}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "tests\Tests.csproj", "{BF2F1F85-2258-484D-967C-1AD9140AAED5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "tests\Tests\Tests.csproj", "{BF2F1F85-2258-484D-967C-1AD9140AAED5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "tests\Benchmarks\Benchmarks.csproj", "{641285CD-92FB-4AAB-A1C9-FEB136F71261}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,5 +20,9 @@ Global
 		{BF2F1F85-2258-484D-967C-1AD9140AAED5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF2F1F85-2258-484D-967C-1AD9140AAED5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF2F1F85-2258-484D-967C-1AD9140AAED5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{641285CD-92FB-4AAB-A1C9-FEB136F71261}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{641285CD-92FB-4AAB-A1C9-FEB136F71261}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{641285CD-92FB-4AAB-A1C9-FEB136F71261}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{641285CD-92FB-4AAB-A1C9-FEB136F71261}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
