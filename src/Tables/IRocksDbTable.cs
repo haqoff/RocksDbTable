@@ -17,6 +17,30 @@ namespace RocksDbTable.Tables;
 public interface IRocksDbTable<TPrimaryKey, TValue> : IUniqueIndex<TPrimaryKey, TValue>
 {
     /// <summary>
+    /// Performs an atomic update based on a row lock. (This is not a Merge operation from RocksDb)
+    /// Makes sense to use if <see cref="TableOptions{TKey,TValue}.SetEnableConcurrentChangesWithinRow"/><c>(true)</c> was called.
+    /// </summary>
+    /// <param name="primaryKey">The primary key of the row to update.</param>
+    /// <param name="change">The change to apply.</param>
+    /// <param name="tryApplyDelegate">The delegate performing the update.</param>
+    /// <param name="newValue">The new applied value, set via the <paramref name="tryApplyDelegate"/> delegate.</param>
+    /// <param name="writeOptions">Optional write options for the operation.</param>
+    /// <returns>Returns the same result as returned from the <paramref name="tryApplyDelegate"/> delegate. If <c>true</c>, then the value was applied to the store.</returns>
+    bool TryApplyChange<TChange>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, WriteOptions? writeOptions = null);
+
+    /// <summary>
+    /// Performs an atomic update based on a row lock within the specified transaction. (This is not a Merge operation from RocksDb)
+    /// Makes sense to use if <see cref="TableOptions{TKey,TValue}.SetEnableConcurrentChangesWithinRow"/><c>(true)</c> was called.
+    /// </summary>
+    /// <param name="primaryKey">The primary key of the row to update.</param>
+    /// <param name="change">The change to apply.</param>
+    /// <param name="tryApplyDelegate">The delegate performing the update.</param>
+    /// <param name="newValue">The new applied value, set via the <paramref name="tryApplyDelegate"/> delegate.</param>
+    /// <param name="transaction">The transaction within which the operation is performed.</param>
+    /// <returns>Returns the same result as returned from the <paramref name="tryApplyDelegate"/> delegate. If <c>true</c>, then the value was applied to the store.</returns>
+    bool TryApplyChange<TChange, TWrapper>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper;
+
+    /// <summary>
     /// Removes an entry from the storage using the specified primary key.
     /// </summary>
     /// <param name="primaryKey">The primary key of the entry to remove.</param>

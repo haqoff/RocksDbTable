@@ -42,6 +42,57 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
         }
     }
 
+    public bool TryApplyChange<TChange>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, WriteOptions? writeOptions = null)
+    {
+        var transaction = RocksDb.CreateTransaction(writeOptions);
+        try
+        {
+            var result = TryApplyChange(primaryKey, change, tryApplyDelegate, out newValue, ref transaction);
+            transaction.Commit();
+            return result;
+        }
+        finally
+        {
+            transaction.Dispose();
+        }
+    }
+
+    public bool TryApplyChange<TChange, TWrapper>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    {
+        var takenLock = AcquireLockIfRequired(primaryKey, ref transaction);
+        var currentValue = GetByKey(primaryKey);
+        var applied = tryApplyDelegate(primaryKey, currentValue, change, out newValue);
+        if (!applied)
+        {
+            if (takenLock is not null)
+            {
+                transaction.ExitLockIfTaken(takenLock);
+            }
+
+            return false;
+        }
+
+        if (newValue is null)
+        {
+            if (currentValue is not null)
+            {
+                Remove(primaryKey, ref transaction);
+            }
+        }
+        else
+        {
+            var newKey = _keyProvider(newValue);
+            if (!EqualityComparer<TPrimaryKey>.Default.Equals(newKey, primaryKey))
+            {
+                Remove(primaryKey, ref transaction);
+            }
+
+            Put(newValue, ref transaction);
+        }
+
+        return true;
+    }
+
     public void Remove(TPrimaryKey primaryKey, WriteOptions? writeOptions = null)
     {
         if (_dependentIndexes.Count == 0)
@@ -214,21 +265,24 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
         return index;
     }
 
-    private void AcquireLockIfRequired<TWrapper>(TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
+    private object? AcquireLockIfRequired<TWrapper>(TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         if (!_tableOptions.EnableConcurrentChangesWithinRow)
         {
-            return;
+            return null;
         }
 
         var lockIndex = (primaryKey is null ? 0 : primaryKey.GetHashCode()) % _locks.Length;
+        lockIndex = lockIndex < 0 ? lockIndex + _locks.Length : lockIndex;
+
         var lockObject = _locks[lockIndex];
         if (transaction.HasLock(lockObject))
         {
-            return;
+            return null;
         }
 
         Monitor.Enter(lockObject);
         transaction.AddTakenLock(lockObject);
+        return lockObject;
     }
 }

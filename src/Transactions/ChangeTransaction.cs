@@ -75,6 +75,30 @@ public ref struct ChangeTransaction<TWrapper>
         return false;
     }
 
+    internal void ExitLockIfTaken(object lockObject)
+    {
+        if (_singleLock is not null)
+        {
+            if (_singleLock == lockObject)
+            {
+                _singleLock = null;
+                Monitor.Exit(lockObject);
+            }
+        }
+        else if (_multipleLocks is not null)
+        {
+            if (_multipleLocks.Remove(lockObject))
+            {
+                if (_multipleLocks.Count == 0)
+                {
+                    _multipleLocks = null;
+                }
+
+                Monitor.Exit(lockObject);
+            }
+        }
+    }
+
     internal void AddTakenLock(object lockObject)
     {
         if (_singleLock is null && _multipleLocks is null)

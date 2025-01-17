@@ -3,9 +3,9 @@ using RocksDbTable.Serialization;
 
 namespace Tests.Infrastructure;
 
-public class StudentSerializer : IRockSerializer<Student>
+public class StudentRockSerializer : IRockSerializer<Student>
 {
-    public static readonly StudentSerializer Instance = new();
+    public static readonly StudentRockSerializer Instance = new();
 
     public void Serialize(IBufferWriter<byte> writer, Student value)
     {

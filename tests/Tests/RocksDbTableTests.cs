@@ -29,7 +29,7 @@ public class RocksDbTableTests : IDisposable
     {
         // Arrange
         var putValue = new Student(100, "John Doe", "1729 1239 1239 9999");
-        var table = CreateTable();
+        var table = CreateStudentTable();
 
         // Act
         table.Put(putValue);
@@ -45,7 +45,7 @@ public class RocksDbTableTests : IDisposable
         // Arrange
         var transaction = _rocksDb.CreateTransaction();
         var putValue = new Student(100, "John Doe", "1729 1239 1239 9999");
-        var table = CreateTable();
+        var table = CreateStudentTable();
 
         // Act, Assert
         table.Put(putValue, ref transaction);
@@ -65,7 +65,7 @@ public class RocksDbTableTests : IDisposable
         var putValue2 = new Student(200, "John Doe", "1111 2222 3333 4444");
         var putValue3 = new Student(300, "John Snow", "4543 3241 4531 6124");
 
-        var table = CreateTable();
+        var table = CreateStudentTable();
         var nameNotUniqueIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
         var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
@@ -87,7 +87,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var tableChangesConsumerMock = new Mock<IRocksDbTableChangesConsumer<int, Student>>();
 
-        var table = CreateTable(opt => opt.SetTableChangesConsumer(tableChangesConsumerMock.Object));
+        var table = CreateStudentTable(opt => opt.SetTableChangesConsumer(tableChangesConsumerMock.Object));
         _ = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
         _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
@@ -106,7 +106,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(100, "John Snow", "1728 1234 1231 9991");
 
-        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
         var nameNotUniqueIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
         var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
@@ -143,7 +143,7 @@ public class RocksDbTableTests : IDisposable
         var afterPutValue = new Student(100, "John Snow", "1728 1234 1231 9991");
         var anotherPutValue = new Student(101, "John Throw", "1111 2222 1231 9991");
 
-        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
         var nameIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
         var passportIdIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
@@ -178,7 +178,7 @@ public class RocksDbTableTests : IDisposable
         var afterPutValue = new Student(100, "John Snow", "1728 1234 1231 9991");
         var tableChangesConsumerMock = new Mock<IRocksDbTableChangesConsumer<int, Student>>();
 
-        var table = CreateTable(opt => opt.SetTableChangesConsumer(tableChangesConsumerMock.Object));
+        var table = CreateStudentTable(opt => opt.SetTableChangesConsumer(tableChangesConsumerMock.Object));
 
         // Act
         table.Put(beforePutValue);
@@ -196,7 +196,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(1001, "John Doe", "1728 1234 1231 9991");
 
-        var table = CreateTable();
+        var table = CreateStudentTable();
         var nameNotUniqueIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8, opt => opt.SetValueStoreMode(ValueStoreMode.Reference));
         var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8, opt => opt.SetValueStoreMode(ValueStoreMode.Reference));
 
@@ -235,7 +235,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(100, "John Snow", "1728 1234 1231 9991");
 
-        var table = CreateTable();
+        var table = CreateStudentTable();
         var nameNotUniqueIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8, opt => opt.SetValueStoreMode(ValueStoreMode.Reference));
         var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8, opt => opt.SetValueStoreMode(ValueStoreMode.Reference));
 
@@ -262,7 +262,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(100, "John Snow", "1729 1239 1239 9999");
 
-        var table = CreateTable();
+        var table = CreateStudentTable();
         var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8, opt => opt.SetValueStoreMode(ValueStoreMode.Reference));
 
         table.Put(putValue1);
@@ -284,7 +284,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(100, "John Doe", "3333 3333 3333 3333");
 
-        var table = CreateTable();
+        var table = CreateStudentTable();
         var nameIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8, opt => opt.SetValueStoreMode(ValueStoreMode.Reference));
 
         table.Put(putValue1);
@@ -304,7 +304,7 @@ public class RocksDbTableTests : IDisposable
     {
         // Arrange
         var putValue = new Student(100, "John Doe", "1729 1239 1239 9999");
-        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
         _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
         // Act, Assert
@@ -325,7 +325,7 @@ public class RocksDbTableTests : IDisposable
         // Arrange
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(100, "John Snow", "1111 2222 3333 4444");
-        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
         _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
         // Act, Assert
@@ -349,7 +349,7 @@ public class RocksDbTableTests : IDisposable
         // Arrange
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(100, "John Snow", "1111 2222 3333 4444");
-        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
         _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
         // Act, Assert
@@ -380,7 +380,7 @@ public class RocksDbTableTests : IDisposable
     {
         // Arrange
         var putValue = new Student(100, "John Doe", "1729 1239 1239 9999");
-        var table = CreateTable();
+        var table = CreateStudentTable();
         table.Put(putValue);
 
         // Act
@@ -395,7 +395,7 @@ public class RocksDbTableTests : IDisposable
     {
         // Arrange
         var putValue = new Student(100, "John Doe", "1729 1239 1239 9999");
-        var table = CreateTable();
+        var table = CreateStudentTable();
         table.Put(putValue);
 
         // Act, Assert
@@ -414,7 +414,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var putValue2 = new Student(300, "John Doe", "4543 3241 4531 6124");
 
-        var table = CreateTable();
+        var table = CreateStudentTable();
         var nameNotUniqueIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
         var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
         table.Put(putValue1);
@@ -436,7 +436,7 @@ public class RocksDbTableTests : IDisposable
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
         var tableChangesConsumerMock = new Mock<IRocksDbTableChangesConsumer<int, Student>>();
 
-        var table = CreateTable(opt => opt.SetTableChangesConsumer(tableChangesConsumerMock.Object));
+        var table = CreateStudentTable(opt => opt.SetTableChangesConsumer(tableChangesConsumerMock.Object));
         _ = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
         _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
         table.Put(putValue1);
@@ -459,7 +459,7 @@ public class RocksDbTableTests : IDisposable
         {
             // Arrange
             var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
-            var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+            var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
             var nameNotUniqueIndex = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8);
             var passportIdUniqueIndex = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
@@ -488,13 +488,13 @@ public class RocksDbTableTests : IDisposable
             passportIdUniqueIndex.GetByKey(putValue1.PassportId).Should().Be(actualValue);
         }
     }
-    
+
     [Fact]
     public void PutAndRemove_TransactionSpecified_WithIndexes_NoChangesConsumer_WithConcurrentSupport_2ConcurrentSubsequentTransactions()
     {
         // Arrange
         var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
-        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        var table = CreateStudentTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
         _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
 
         // Act, Assert
@@ -515,14 +515,170 @@ public class RocksDbTableTests : IDisposable
         table.GetAllValues().Should().BeEmpty();
     }
 
+    #region TryApplyChange
+
+    [Fact]
+    public async Task TryApplyChange_IncrementCounter_ShouldCorrectApplyConcurrentChanges()
+    {
+        // Arrange
+        const int count = 100;
+        const int threads = 8;
+
+        var table = CreateCounterDataTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+
+        // Act, Assert
+        var tasks = Enumerable
+            .Range(0, threads)
+            .Select(_ => Task.Run(() =>
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    var result = table.TryApplyChange("CounterKey", 1, static (string key, CounterData? value, int change, out CounterData? newValue) =>
+                    {
+                        if (value is null)
+                        {
+                            newValue = new CounterData(key, 1);
+                        }
+                        else
+                        {
+                            newValue = new CounterData(key, value.Value + change);
+                        }
+
+                        return true;
+                    }, out var _);
+
+                    result.Should().BeTrue();
+                }
+            }));
+
+        await Task.WhenAll(tasks);
+        var result = table.GetByKey("CounterKey");
+        result?.Value.Should().Be(count * threads);
+    }
+
+    [Fact]
+    public void TryApplyChange_WhenPrimaryKeyChanged_ShouldRemoveOldAndPutNewOne()
+    {
+        // Arrange
+        var table = CreateCounterDataTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        table.Put(new CounterData("OldKey", 1));
+
+        // Act
+        var result = table.TryApplyChange("OldKey", 1, static (string key, CounterData? value, int change, out CounterData? newValue) =>
+        {
+            if (value is null)
+            {
+                newValue = null;
+                return false;
+            }
+
+            newValue = new CounterData("NewKey", value.Value + change);
+            return true;
+        }, out _);
+
+        // Assert
+        result.Should().BeTrue();
+        table.GetByKey("OldKey").Should().BeNull();
+        table.GetByKey("NewKey").Should().Be(new CounterData("NewKey", 2));
+    }
+
+    [Fact]
+    public void TryApplyChange_WhenChangedToNull_ShouldRemoveFromStorage()
+    {
+        // Arrange
+        var table = CreateCounterDataTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        table.Put(new CounterData("OldKey", 1));
+
+        // Act
+        var result = table.TryApplyChange("OldKey", 1, static (string key, CounterData? value, int change, out CounterData? newValue) =>
+        {
+            newValue = null;
+            return true;
+        }, out _);
+
+        // Assert
+        result.Should().BeTrue();
+        table.GetByKey("OldKey").Should().BeNull();
+    }
+
+    [Fact]
+    public void TryApplyChange_ShouldNotApplyChangeIfFalseReturned()
+    {
+        // Arrange
+        var table = CreateCounterDataTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+
+        var data = new CounterData("OldKey", 1);
+        table.Put(data);
+
+        // Act
+        var result = table.TryApplyChange(data.Name, 1, static (string key, CounterData? value, int change, out CounterData? newValue) =>
+        {
+            newValue = new CounterData(key, 100);
+            return false;
+        }, out _);
+
+        // Assert
+        result.Should().BeFalse();
+        table.GetByKey(data.Name).Should().Be(data);
+    }
+
+    [Fact]
+    public void TryApplyChange_ShouldReturnCorrectNewValue()
+    {
+        // Arrange
+        var table = CreateCounterDataTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+
+        const string key = "OldKey";
+
+        // Act, Assert
+        var result = table.TryApplyChange(key, 3, Add, out var newValue1);
+        result.Should().BeTrue();
+        newValue1!.Value.Should().Be(3);
+
+        var result2 = table.TryApplyChange(key, 300, Add, out var newValue2);
+        result2.Should().BeTrue();
+        newValue2!.Value.Should().Be(100);
+
+        var result3 = table.TryApplyChange(key, 120, Add, out var newValue3);
+        result3.Should().BeFalse();
+        newValue3.Should().BeNull();
+
+        static bool Add(string key, CounterData? value, int change, out CounterData? newValue)
+        {
+            if (value is null)
+            {
+                newValue = new CounterData(key, change);
+                return true;
+            }
+
+            const int goal = 100;
+            if (value.Value == goal)
+            {
+                // goal reachead
+                newValue = null;
+                return false;
+            }
+
+            newValue = new CounterData(key, Math.Min(goal, value.Value + change));
+            return true;
+        }
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _rocksDb.Dispose();
         Directory.Delete(_rocksDbPath, true);
     }
 
-    private IRocksDbTable<int, Student> CreateTable(Action<TableOptions<int, Student>>? action = null)
+    private IRocksDbTable<int, Student> CreateStudentTable(Action<TableOptions<int, Student>>? action = null)
     {
-        return _rocksDb.CreateTable(s => s.Id, Int32RockSerializer.Instance, StudentSerializer.Instance, action);
+        return _rocksDb.CreateTable(s => s.Id, Int32RockSerializer.Instance, StudentRockSerializer.Instance, action);
+    }
+
+    private IRocksDbTable<string, CounterData> CreateCounterDataTable(Action<TableOptions<string, CounterData>>? action = null)
+    {
+        return _rocksDb.CreateTable(s => s.Name, StringRockSerializer.Utf8, CounterDataSerializer.Instance, action);
     }
 }
