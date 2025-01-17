@@ -5,10 +5,21 @@
         <Nullable>enable</Nullable>
         <LangVersion>preview</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <Title>RocksDbTable</Title>
+        <Description>`RocksDbTable` is a high-performance library for managing tables and indexes in a RocksDB database.</Description>
+        <PackageProjectUrl>https://github.com/haqoff/RocksDbTable</PackageProjectUrl>
+        <PackageIcon>logo.png</PackageIcon>
+        <PackageReadmeFile>README.MD</PackageReadmeFile>
+        <PackageTags>rocksdb db database storage nosql leveldb embedded database</PackageTags>
+        <Authors>Kirill Sizov, haqoff, haqon</Authors>
+        <RepositoryType>git</RepositoryType>
+        <PackageId>RocksDbTable</PackageId>
+        <Copyright>Copyright © 2025-present Kirill Sizov &lt;haqoff@gmail.com&gt;</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Haqon.MemoryPack" Version="1.21.4"/>
         <PackageReference Include="RocksDb" Version="9.7.3.54622"/>
     </ItemGroup>
 
@@ -19,9 +30,14 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="..\README.MD">
-        <Link>README.MD</Link>
-      </Content>
+        <None Include="..\logo.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\README.MD">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
     </ItemGroup>
 
 </Project>
