@@ -93,7 +93,11 @@ public class TableOptions<TKey, TValue> : IStoreOptions
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="lockCount"/> is zero or negative.</exception>
     public TableOptions<TKey, TValue> SetLockCount(int lockCount)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(lockCount, nameof(lockCount));
+        if (lockCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(lockCount), lockCount, "Lock count must be greater than zero.");
+        }
+
         LockCount = lockCount;
         return this;
     }
