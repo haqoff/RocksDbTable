@@ -1,8 +1,8 @@
 using System;
-using Haqon.RocksDb.ChangeTracking;
 using RocksDbSharp;
+using RocksDbTable.ChangeTracking;
 
-namespace Haqon.RocksDb.Options;
+namespace RocksDbTable.Options;
 
 /// <summary>
 /// Represents configuration options for a RocksDB table.

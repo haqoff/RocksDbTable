@@ -1,4 +1,4 @@
-﻿namespace Haqon.RocksDb.ChangeTracking;
+﻿namespace RocksDbTable.ChangeTracking;
 
 internal interface ITableChange
 {

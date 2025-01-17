@@ -1,7 +1,7 @@
 ﻿using System;
 using RocksDbSharp;
 
-namespace Haqon.RocksDb.Transactions;
+namespace RocksDbTable.Transactions;
 
 public interface IRocksDbCommandWrapper
 {

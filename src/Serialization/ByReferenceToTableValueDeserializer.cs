@@ -1,8 +1,8 @@
 ﻿using System;
-using Haqon.RocksDb.Tables;
 using RocksDbSharp;
+using RocksDbTable.Tables;
 
-namespace Haqon.RocksDb.Serialization;
+namespace RocksDbTable.Serialization;
 
 internal class ByReferenceToTableValueDeserializer<TValue> : ISpanDeserializer<TValue>
 {

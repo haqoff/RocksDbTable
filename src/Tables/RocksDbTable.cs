@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Haqon.RocksDb.ChangeTracking;
-using Haqon.RocksDb.Core;
-using Haqon.RocksDb.Extensions;
-using Haqon.RocksDb.NotUniqueIndexes;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Transactions;
-using Haqon.RocksDb.UniqueIndexes;
 using RocksDbSharp;
+using RocksDbTable.ChangeTracking;
+using RocksDbTable.Core;
+using RocksDbTable.Extensions;
+using RocksDbTable.NotUniqueIndexes;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Transactions;
+using RocksDbTable.UniqueIndexes;
 
-namespace Haqon.RocksDb.Tables;
+namespace RocksDbTable.Tables;
 
 internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPrimaryKey, TValue>, IRocksDbTable<TPrimaryKey, TValue>, ITableValueProvider<TValue>
 {
@@ -21,7 +21,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
     private readonly List<IDependentIndex<TValue>> _dependentIndexes = new();
     private readonly object[] _locks;
 
-    internal RocksDbTable(RocksDbSharp.RocksDb rocksDb, Func<TValue, TPrimaryKey> keyProvider, IRockSerializer<TPrimaryKey> keySerializer, IRockSerializer<TValue> valueSerializer, TableOptions<TPrimaryKey, TValue> tableOptions)
+    internal RocksDbTable(RocksDb rocksDb, Func<TValue, TPrimaryKey> keyProvider, IRockSerializer<TPrimaryKey> keySerializer, IRockSerializer<TValue> valueSerializer, TableOptions<TPrimaryKey, TValue> tableOptions)
         : base(rocksDb, keySerializer, tableOptions, new RocksDbSpanDeserializerAdapter<TValue>(valueSerializer))
     {
         _keyProvider = keyProvider;

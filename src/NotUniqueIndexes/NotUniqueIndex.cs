@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
-using Haqon.RocksDb.Core;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Tables;
-using Haqon.RocksDb.Transactions;
-using Haqon.RocksDb.Utils;
+using RocksDbTable.Core;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Tables;
+using RocksDbTable.Transactions;
+using RocksDbTable.Utils;
 
-namespace Haqon.RocksDb.NotUniqueIndexes;
+namespace RocksDbTable.NotUniqueIndexes;
 
 internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<TNotUniqueKey, TValue>, INotUniqueIndex<TNotUniqueKey, TValue>, IDependentIndex<TValue>
 {

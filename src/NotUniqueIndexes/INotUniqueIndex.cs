@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Haqon.RocksDb.Core;
-using Haqon.RocksDb.Options;
+using RocksDbTable.Core;
+using RocksDbTable.Options;
 
-namespace Haqon.RocksDb.NotUniqueIndexes;
+namespace RocksDbTable.NotUniqueIndexes;
 
 public interface INotUniqueIndex<in TNotUniqueKey, out TValue> : IKeyValueStoreBase<TNotUniqueKey, TValue>
 {

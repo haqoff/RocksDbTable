@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace Haqon.RocksDb.Utils;
+namespace RocksDbTable.Utils;
 
 internal sealed class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
 {

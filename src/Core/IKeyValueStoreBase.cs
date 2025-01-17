@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
 
-namespace Haqon.RocksDb.Core;
+namespace RocksDbTable.Core;
 
 public interface IKeyValueStoreBase<in TKey, out TValue>
 {

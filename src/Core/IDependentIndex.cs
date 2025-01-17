@@ -1,7 +1,7 @@
 ﻿using System;
-using Haqon.RocksDb.Transactions;
+using RocksDbTable.Transactions;
 
-namespace Haqon.RocksDb.Core;
+namespace RocksDbTable.Core;
 
 internal interface IDependentIndex<in TValue>
 {

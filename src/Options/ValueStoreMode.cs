@@ -1,4 +1,4 @@
-﻿namespace Haqon.RocksDb.Options;
+﻿namespace RocksDbTable.Options;
 
 /// <summary>
 /// Specifies how the index value will be stored.

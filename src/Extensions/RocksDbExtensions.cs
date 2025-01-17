@@ -1,11 +1,11 @@
 ﻿using System;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Tables;
-using Haqon.RocksDb.Transactions;
 using RocksDbSharp;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Tables;
+using RocksDbTable.Transactions;
 
-namespace Haqon.RocksDb.Extensions;
+namespace RocksDbTable.Extensions;
 
 /// <summary>
 /// Provides extension methods for <see cref="RocksDb"/>.
@@ -18,7 +18,7 @@ public static class RocksDbExtensions
     /// <param name="rocksDb">The RocksDb database instance.</param>
     /// <param name="writeOptions">Optional write options.</param>
     /// <returns>A transaction that can be used for operations in tables.</returns>
-    public static ChangeTransaction<WriteBatchCommandRocksDbWrapper> CreateTransaction(this RocksDbSharp.RocksDb rocksDb, WriteOptions? writeOptions = null)
+    public static ChangeTransaction<WriteBatchCommandRocksDbWrapper> CreateTransaction(this RocksDb rocksDb, WriteOptions? writeOptions = null)
     {
         var batch = new WriteBatch();
         var wrapper = new WriteBatchCommandRocksDbWrapper(batch);
@@ -36,14 +36,14 @@ public static class RocksDbExtensions
     /// <param name="valueSerializer">Serializer for the table values.</param>
     /// <param name="configureAction">Optional configuration action for table options.</param>
     /// <returns>An instance of <see cref="IRocksDbTable{TPrimaryKey, TValue}"/> representing the created table.</returns>
-    public static IRocksDbTable<TPrimaryKey, TValue> CreateTable<TPrimaryKey, TValue>(this RocksDbSharp.RocksDb rocksDb, Func<TValue, TPrimaryKey> primaryKeyProvider, IRockSerializer<TPrimaryKey> primaryKeySerializer, IRockSerializer<TValue> valueSerializer, Action<TableOptions<TPrimaryKey, TValue>>? configureAction = null)
+    public static IRocksDbTable<TPrimaryKey, TValue> CreateTable<TPrimaryKey, TValue>(this RocksDb rocksDb, Func<TValue, TPrimaryKey> primaryKeyProvider, IRockSerializer<TPrimaryKey> primaryKeySerializer, IRockSerializer<TValue> valueSerializer, Action<TableOptions<TPrimaryKey, TValue>>? configureAction = null)
     {
         var tableOptions = new TableOptions<TPrimaryKey, TValue>();
         configureAction?.Invoke(tableOptions);
         return new RocksDbTable<TPrimaryKey, TValue>(rocksDb, primaryKeyProvider, primaryKeySerializer, valueSerializer, tableOptions);
     }
 
-    internal static ChangeTransaction<RocksDbWrapper> CreateMockedTransaction(this RocksDbSharp.RocksDb rocksDb, WriteOptions? writeOptions = null)
+    internal static ChangeTransaction<RocksDbWrapper> CreateMockedTransaction(this RocksDb rocksDb, WriteOptions? writeOptions = null)
     {
         var wrapper = new RocksDbWrapper(rocksDb, writeOptions);
         return new ChangeTransaction<RocksDbWrapper>(null, wrapper, rocksDb, writeOptions);

@@ -1,6 +1,6 @@
 using RocksDbSharp;
 
-namespace Haqon.RocksDb.Options;
+namespace RocksDbTable.Options;
 
 internal interface IStoreOptions
 {

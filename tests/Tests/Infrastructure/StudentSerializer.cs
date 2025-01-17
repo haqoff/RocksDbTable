@@ -1,5 +1,5 @@
 ﻿using System.Buffers;
-using Haqon.RocksDb.Serialization;
+using RocksDbTable.Serialization;
 
 namespace Tests.Infrastructure;
 

@@ -1,11 +1,11 @@
 ﻿using System.Text;
 using FluentAssertions;
-using Haqon.RocksDb.ChangeTracking;
-using Haqon.RocksDb.Core;
-using Haqon.RocksDb.Extensions;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Tables;
+using RocksDbTable.ChangeTracking;
+using RocksDbTable.Core;
+using RocksDbTable.Extensions;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Tables;
 using Moq;
 using RocksDbSharp;
 using Tests.Infrastructure;

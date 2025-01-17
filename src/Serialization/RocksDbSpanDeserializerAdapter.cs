@@ -1,7 +1,7 @@
 ﻿using System;
 using RocksDbSharp;
 
-namespace Haqon.RocksDb.Serialization;
+namespace RocksDbTable.Serialization;
 
 internal class RocksDbSpanDeserializerAdapter<T> : ISpanDeserializer<T>
 {

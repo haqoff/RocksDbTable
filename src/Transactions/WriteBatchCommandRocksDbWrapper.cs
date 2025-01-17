@@ -1,7 +1,7 @@
 using System;
 using RocksDbSharp;
 
-namespace Haqon.RocksDb.Transactions;
+namespace RocksDbTable.Transactions;
 
 public readonly struct WriteBatchCommandRocksDbWrapper(WriteBatch batch) : IRocksDbCommandWrapper
 {

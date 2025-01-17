@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using Haqon.RocksDb.NotUniqueIndexes;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Transactions;
-using Haqon.RocksDb.UniqueIndexes;
 using RocksDbSharp;
+using RocksDbTable.NotUniqueIndexes;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Transactions;
+using RocksDbTable.UniqueIndexes;
 
-namespace Haqon.RocksDb.Tables;
+namespace RocksDbTable.Tables;
 
 /// <summary>
 /// Table in the RocksDb database

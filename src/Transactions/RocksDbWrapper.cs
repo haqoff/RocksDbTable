@@ -1,9 +1,9 @@
 using System;
 using RocksDbSharp;
 
-namespace Haqon.RocksDb.Transactions;
+namespace RocksDbTable.Transactions;
 
-public readonly struct RocksDbWrapper(RocksDbSharp.RocksDb db, WriteOptions? writeOptions) : IRocksDbCommandWrapper
+public readonly struct RocksDbWrapper(RocksDb db, WriteOptions? writeOptions) : IRocksDbCommandWrapper
 {
     public void Put(ReadOnlySpan<byte> key, ReadOnlySpan<byte> value, ColumnFamilyHandle? cf = null)
     {

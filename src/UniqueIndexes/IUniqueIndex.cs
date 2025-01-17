@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
-using Haqon.RocksDb.Core;
-using Haqon.RocksDb.Serialization;
+using RocksDbTable.Core;
+using RocksDbTable.Serialization;
 
-namespace Haqon.RocksDb.UniqueIndexes;
+namespace RocksDbTable.UniqueIndexes;
 
 public interface IUniqueIndex<TUniqueKey, out TValue> : IKeyValueStoreBase<TUniqueKey, TValue>
 {

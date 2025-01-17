@@ -2,7 +2,7 @@
 using System.Buffers;
 using System.Text;
 
-namespace Haqon.RocksDb.Serialization;
+namespace RocksDbTable.Serialization;
 
 public class StringRockSerializer(Encoding encoding) : IRockSerializer<string>
 {

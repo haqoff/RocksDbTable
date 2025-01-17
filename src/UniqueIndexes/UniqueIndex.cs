@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Haqon.RocksDb.Core;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Tables;
-using Haqon.RocksDb.Transactions;
+using RocksDbTable.Core;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Tables;
+using RocksDbTable.Transactions;
 
-namespace Haqon.RocksDb.UniqueIndexes;
+namespace RocksDbTable.UniqueIndexes;
 
 internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqueKey, TValue>, IUniqueIndex<TUniqueKey, TValue>, IDependentIndex<TValue>
 {

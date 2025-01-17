@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
 
-namespace Haqon.RocksDb.Serialization;
+namespace RocksDbTable.Serialization;
 
 public interface IRockSerializer<T>
 {

@@ -1,4 +1,4 @@
-﻿namespace Haqon.RocksDb.Options;
+﻿namespace RocksDbTable.Options;
 
 public enum SeekMode : byte
 {

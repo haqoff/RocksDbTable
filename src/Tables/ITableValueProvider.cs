@@ -1,6 +1,6 @@
 using System;
 
-namespace Haqon.RocksDb.Tables;
+namespace RocksDbTable.Tables;
 
 internal interface ITableValueProvider<out TValue>
 {

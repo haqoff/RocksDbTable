@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using Haqon.RocksDb.ChangeTracking;
 using RocksDbSharp;
+using RocksDbTable.ChangeTracking;
 
-namespace Haqon.RocksDb.Transactions;
+namespace RocksDbTable.Transactions;
 
 public ref struct ChangeTransaction<TWrapper>
     where TWrapper : IRocksDbCommandWrapper
 {
     private readonly WriteBatch? _writeBatch;
-    private readonly RocksDbSharp.RocksDb _rocksDb;
+    private readonly RocksDb _rocksDb;
     private readonly WriteOptions? _writeOptions;
     private List<ITableChange>? _changes;
 
@@ -19,7 +19,7 @@ public ref struct ChangeTransaction<TWrapper>
 
     internal int TakenLockCount => _singleLock is not null ? 1 : _multipleLocks?.Count ?? 0;
 
-    internal ChangeTransaction(WriteBatch? writeBatch, TWrapper commandWrapper, RocksDbSharp.RocksDb rocksDb, WriteOptions? writeOptions)
+    internal ChangeTransaction(WriteBatch? writeBatch, TWrapper commandWrapper, RocksDb rocksDb, WriteOptions? writeOptions)
     {
         _writeBatch = writeBatch;
         _rocksDb = rocksDb;

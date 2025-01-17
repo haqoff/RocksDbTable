@@ -1,4 +1,4 @@
-namespace Haqon.RocksDb.ChangeTracking;
+namespace RocksDbTable.ChangeTracking;
 
 internal record RecordAddedOrUpdated<TKey, TValue>(TKey NewKey, TValue? OldValue, TValue NewValue, IRocksDbTableChangesConsumer<TKey, TValue> Consumer) : ITableChange
 {

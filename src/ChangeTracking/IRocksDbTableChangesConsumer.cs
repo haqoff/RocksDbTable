@@ -1,4 +1,4 @@
-﻿namespace Haqon.RocksDb.ChangeTracking;
+﻿namespace RocksDbTable.ChangeTracking;
 
 /// <summary>
 /// A consumer subscribed to changes in a RocksDb storage table.

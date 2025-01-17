@@ -1,7 +1,7 @@
 ﻿using System;
-using Haqon.RocksDb.Utils;
+using RocksDbTable.Utils;
 
-namespace Haqon.RocksDb.Core;
+namespace RocksDbTable.Core;
 
 internal readonly ref struct SpanPoint
 {

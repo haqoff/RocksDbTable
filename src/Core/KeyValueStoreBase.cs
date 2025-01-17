@@ -2,25 +2,25 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Haqon.RocksDb.Options;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Tables;
-using Haqon.RocksDb.Utils;
 using RocksDbSharp;
+using RocksDbTable.Options;
+using RocksDbTable.Serialization;
+using RocksDbTable.Tables;
+using RocksDbTable.Utils;
 
-namespace Haqon.RocksDb.Core;
+namespace RocksDbTable.Core;
 
 internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKey, TValue>
 {
     // ReSharper disable once NotAccessedField.Local Store a reference to options to prevent the GC from collecting ColumnFamilyOptions, since ColumnFamilyOptions can contain unmanaged pointers to delegates.
     private readonly IStoreOptions _options;
-    internal readonly ColumnFamilyHandle ColumnFamilyHandle;
-    protected readonly RocksDbSharp.RocksDb RocksDb;
+    protected readonly RocksDb RocksDb;
     protected readonly IRockSerializer<TKey> KeySerializer;
     protected readonly ISpanDeserializer<TValue> ValueDeserializer;
     protected readonly ThreadLocal<ArrayPoolBufferWriter> LocalBufferWriter;
+    public readonly ColumnFamilyHandle ColumnFamilyHandle;
 
-    protected KeyValueStoreBase(RocksDbSharp.RocksDb rocksDb, IRockSerializer<TKey> keySerializer, IStoreOptions storeOptions, ISpanDeserializer<TValue> valueDeserializer)
+    protected KeyValueStoreBase(RocksDb rocksDb, IRockSerializer<TKey> keySerializer, IStoreOptions storeOptions, ISpanDeserializer<TValue> valueDeserializer)
     {
         RocksDb = rocksDb;
         KeySerializer = keySerializer;

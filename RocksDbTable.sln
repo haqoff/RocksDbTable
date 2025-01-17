@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Haqon.RocksDb", "src\Haqon.RocksDb.csproj", "{0216453F-C456-40DF-8FB6-A02A4708B602}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RocksDbTable", "src\RocksDbTable.csproj", "{0216453F-C456-40DF-8FB6-A02A4708B602}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "tests\Tests\Tests.csproj", "{BF2F1F85-2258-484D-967C-1AD9140AAED5}"
 EndProject

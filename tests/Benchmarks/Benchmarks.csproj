@@ -12,7 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\Haqon.RocksDb.csproj" />
+      <ProjectReference Include="..\..\src\RocksDbTable.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,8 +1,8 @@
 ﻿using System.Buffers;
 using BenchmarkDotNet.Attributes;
-using Haqon.RocksDb.Extensions;
-using Haqon.RocksDb.Serialization;
-using Haqon.RocksDb.Tables;
+using RocksDbTable.Extensions;
+using RocksDbTable.Serialization;
+using RocksDbTable.Tables;
 using RocksDbSharp;
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
@@ -12,14 +12,14 @@ namespace Benchmarks;
 /*
 | Method                                  | Mean       | Error    | StdDev   | Allocated |
 |---------------------------------------- |-----------:|---------:|---------:|----------:|
-| PutRaw                                  | 3,296.8 ns | 20.06 ns | 18.76 ns |         - |
-| PutRocksDbTable                         | 3,541.2 ns | 34.26 ns | 30.37 ns |         - |
-| PutRocksDbTableWithConcurrentSupport    | 3,490.0 ns | 13.81 ns | 12.24 ns |         - |
-| RemoveRaw                               | 3,311.6 ns | 10.03 ns |  8.38 ns |         - |
-| RemoveRocksDbTable                      | 3,353.0 ns | 25.86 ns | 24.19 ns |         - |
-| RemoveRocksDbTableWithConcurrentSupport | 3,366.2 ns | 29.79 ns | 26.41 ns |         - |
-| GetRaw                                  |   162.2 ns |  0.32 ns |  0.30 ns |         - |
-| GetRocksDbTable                         |   210.1 ns |  0.41 ns |  0.36 ns |         - |
+| PutRaw                                  | 3,445.8 ns | 37.30 ns | 34.89 ns |         - |
+| PutRocksDbTable                         | 3,503.2 ns | 14.48 ns | 13.55 ns |         - |
+| PutRocksDbTableWithConcurrentSupport    | 3,431.3 ns |  8.39 ns |  7.44 ns |         - |
+| RemoveRaw                               | 3,224.1 ns | 17.50 ns | 16.37 ns |         - |
+| RemoveRocksDbTable                      | 3,329.3 ns | 19.61 ns | 18.35 ns |         - |
+| RemoveRocksDbTableWithConcurrentSupport | 3,432.6 ns | 24.49 ns | 22.91 ns |         - |
+| GetRaw                                  |   175.3 ns |  0.24 ns |  0.20 ns |         - |
+| GetRocksDbTable                         |   201.3 ns |  0.29 ns |  0.24 ns |         - |
 */
 [MemoryDiagnoser()]
 public class RawVsRocksDbTableBenchmarks

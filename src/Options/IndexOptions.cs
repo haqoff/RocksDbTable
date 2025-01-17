@@ -1,7 +1,7 @@
 ﻿using System;
 using RocksDbSharp;
 
-namespace Haqon.RocksDb.Options;
+namespace RocksDbTable.Options;
 
 /// <summary>
 /// Specifies options for configuring an index.
