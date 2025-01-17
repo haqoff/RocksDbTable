@@ -10,16 +10,16 @@ using RocksDbSharp;
 namespace Benchmarks;
 
 /*
-| Method                                  | Mean       | Error    | StdDev    | Median     | Allocated |
-|---------------------------------------- |-----------:|---------:|----------:|-----------:|----------:|
-| PutRaw                                  | 3,732.6 ns | 73.77 ns | 125.26 ns | 3,673.6 ns |         - |
-| PutRocksDbTable                         | 3,538.7 ns | 70.67 ns | 155.12 ns | 3,482.4 ns |         - |
-| PutRocksDbTableWithConcurrentSupport    | 3,512.6 ns | 35.81 ns |  27.96 ns | 3,516.3 ns |         - |
-| RemoveRaw                               | 3,219.8 ns | 15.57 ns |  13.00 ns | 3,215.8 ns |         - |
-| RemoveRocksDbTable                      | 3,347.9 ns | 22.31 ns |  17.42 ns | 3,348.2 ns |         - |
-| RemoveRocksDbTableWithConcurrentSupport | 3,368.7 ns | 34.91 ns |  29.15 ns | 3,359.1 ns |         - |
-| GetRaw                                  |   152.8 ns |  0.74 ns |   0.58 ns |   152.6 ns |         - |
-| GetRocksDbTable                         |   229.2 ns |  0.49 ns |   0.38 ns |   229.1 ns |         - |
+| Method                                  | Mean       | Error    | StdDev   | Allocated |
+|---------------------------------------- |-----------:|---------:|---------:|----------:|
+| PutRaw                                  | 3,296.8 ns | 20.06 ns | 18.76 ns |         - |
+| PutRocksDbTable                         | 3,541.2 ns | 34.26 ns | 30.37 ns |         - |
+| PutRocksDbTableWithConcurrentSupport    | 3,490.0 ns | 13.81 ns | 12.24 ns |         - |
+| RemoveRaw                               | 3,311.6 ns | 10.03 ns |  8.38 ns |         - |
+| RemoveRocksDbTable                      | 3,353.0 ns | 25.86 ns | 24.19 ns |         - |
+| RemoveRocksDbTableWithConcurrentSupport | 3,366.2 ns | 29.79 ns | 26.41 ns |         - |
+| GetRaw                                  |   162.2 ns |  0.32 ns |  0.30 ns |         - |
+| GetRocksDbTable                         |   210.1 ns |  0.41 ns |  0.36 ns |         - |
 */
 [MemoryDiagnoser()]
 public class RawVsRocksDbTableBenchmarks

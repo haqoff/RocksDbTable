@@ -343,6 +343,34 @@ public class RocksDbTableTests : IDisposable
         Assert.Equal(putValue1, value);
     }
 
+    [Fact]
+    public void Put_TransactionSpecified_WithIndexes_NoChangesConsumer_WithConcurrentSupport_2ConcurrentSubsequentTransactions()
+    {
+        // Arrange
+        var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
+        var putValue2 = new Student(100, "John Snow", "1111 2222 3333 4444");
+        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
+
+        // Act, Assert
+        var transaction1 = _rocksDb.CreateTransaction();
+        table.Put(putValue1, ref transaction1);
+
+        var thread = new Thread(() =>
+        {
+            var transaction2 = _rocksDb.CreateTransaction();
+            table.Put(putValue2, ref transaction2);
+            transaction2.Commit();
+        });
+
+        thread.Start();
+        transaction1.Commit();
+        thread.Join();
+
+        var value = table.GetAllValues().Single();
+        Assert.Equal(putValue2, value);
+    }
+
     #endregion
 
     #region Remove
@@ -427,7 +455,7 @@ public class RocksDbTableTests : IDisposable
     [Fact]
     public async Task PutAndRemove_NoTransactionSpecified_WithIndexes_NoChangesConsumer_WithConcurrentChanges_DataShouldBeConsistent()
     {
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 100; i++)
         {
             // Arrange
             var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
@@ -459,6 +487,32 @@ public class RocksDbTableTests : IDisposable
             nameNotUniqueIndex.GetAllValuesByKey(putValue1.Name).FirstOrDefault().Should().Be(actualValue);
             passportIdUniqueIndex.GetByKey(putValue1.PassportId).Should().Be(actualValue);
         }
+    }
+    
+    [Fact]
+    public void PutAndRemove_TransactionSpecified_WithIndexes_NoChangesConsumer_WithConcurrentSupport_2ConcurrentSubsequentTransactions()
+    {
+        // Arrange
+        var putValue1 = new Student(100, "John Doe", "1729 1239 1239 9999");
+        var table = CreateTable(opt => opt.SetEnableConcurrentChangesWithinRow(true));
+        _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8);
+
+        // Act, Assert
+        var transaction1 = _rocksDb.CreateTransaction();
+        table.Put(putValue1, ref transaction1);
+
+        var thread = new Thread(() =>
+        {
+            var transaction2 = _rocksDb.CreateTransaction();
+            table.Remove(putValue1.Id, ref transaction2);
+            transaction2.Commit();
+        });
+
+        thread.Start();
+        transaction1.Commit();
+        thread.Join();
+
+        table.GetAllValues().Should().BeEmpty();
     }
 
     public void Dispose()

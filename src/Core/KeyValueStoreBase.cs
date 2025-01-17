@@ -41,7 +41,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         try
         {
             KeySerializer.Serialize(keyBuffer, key);
-            return GetByKey(keyBuffer.WrittenSpan);
+            return RocksDb.Get(keyBuffer.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
         }
         finally
         {
