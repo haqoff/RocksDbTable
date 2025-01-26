@@ -71,6 +71,7 @@ internal sealed class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
         if (_rentedBuffer is null)
         {
             _rentedBuffer = ArrayPool<byte>.Shared.Rent(_initialCapacity >= sizeHint ? _initialCapacity : sizeHint);
+            Array.Clear(_rentedBuffer, 0, _rentedBuffer.Length);
         }
         else
         {
@@ -92,6 +93,11 @@ internal sealed class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
 
                 byte[] oldBuffer = _rentedBuffer;
                 _rentedBuffer = ArrayPool<byte>.Shared.Rent(newSize);
+
+                if (_rentedBuffer.Length > _writtenSize)
+                {
+                    Array.Clear(_rentedBuffer, _writtenSize, _rentedBuffer.Length - _writtenSize);
+                }
 
                 Debug.Assert(oldBuffer.Length >= _writtenSize);
                 Debug.Assert(_rentedBuffer.Length >= _writtenSize);
