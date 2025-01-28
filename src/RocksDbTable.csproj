@@ -20,7 +20,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="RocksDb" Version="9.7.3.54622"/>
+        <PackageReference Include="RocksDb" Version="9.4.0.50294"/>
     </ItemGroup>
 
     <ItemGroup>
