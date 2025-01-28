@@ -9,7 +9,7 @@ namespace RocksDbTable.Transactions;
 public ref struct ChangeTransaction<TWrapper>
     where TWrapper : IRocksDbCommandWrapper
 {
-    private readonly WriteBatch? _writeBatch;
+    private WriteBatch? _writeBatch;
     private readonly RocksDb _rocksDb;
     private readonly WriteOptions? _writeOptions;
     private List<ITableChange>? _changes;
@@ -56,6 +56,8 @@ public ref struct ChangeTransaction<TWrapper>
 
     public void Dispose()
     {
+        _writeBatch?.Dispose();
+        _writeBatch = null;
         _changes = null;
         ExitLocks();
     }
