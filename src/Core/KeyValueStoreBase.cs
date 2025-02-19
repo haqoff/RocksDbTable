@@ -14,10 +14,10 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 {
     // ReSharper disable once NotAccessedField.Local Store a reference to options to prevent the GC from collecting ColumnFamilyOptions, since ColumnFamilyOptions can contain unmanaged pointers to delegates.
     private readonly IStoreOptions _options;
+    private readonly ThreadLocal<ArrayPoolBufferWriter> _localBufferWriter;
     protected readonly RocksDb RocksDb;
     protected readonly IRockSerializer<TKey> KeySerializer;
     protected readonly ISpanDeserializer<TValue> ValueDeserializer;
-    protected readonly ThreadLocal<ArrayPoolBufferWriter> LocalBufferWriter;
     public readonly ColumnFamilyHandle ColumnFamilyHandle;
 
     protected KeyValueStoreBase(RocksDb rocksDb, IRockSerializer<TKey> keySerializer, IStoreOptions storeOptions, ISpanDeserializer<TValue> valueDeserializer)
@@ -27,7 +27,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         _options = storeOptions;
         ColumnFamilyHandle = rocksDb.CreateColumnFamily(storeOptions.ColumnFamilyOptions, storeOptions.ColumnFamilyName);
         ValueDeserializer = valueDeserializer;
-        LocalBufferWriter = new ThreadLocal<ArrayPoolBufferWriter>(static () => new ArrayPoolBufferWriter());
+        _localBufferWriter = new ThreadLocal<ArrayPoolBufferWriter>(static () => new ArrayPoolBufferWriter(fromPool: false));
     }
 
     public TValue? GetByKey(ReadOnlySpan<byte> key)
@@ -37,7 +37,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public TValue? GetByKey(TKey key)
     {
-        var keyBuffer = LocalBufferWriter.Value!;
+        var keyBuffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(keyBuffer, key);
@@ -45,13 +45,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            keyBuffer.Dispose();
+            ReturnBufferWriter(keyBuffer);
         }
     }
 
     public bool HasExactKey(TKey uniqueKey)
     {
-        var keyBuffer = LocalBufferWriter.Value!;
+        var keyBuffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(keyBuffer, uniqueKey);
@@ -59,13 +59,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            keyBuffer.Dispose();
+            ReturnBufferWriter(keyBuffer);
         }
     }
 
     public bool HasAnyKeyByPrefix<TPrefixKey>(TPrefixKey key, IRockSerializer<TPrefixKey> serializer)
     {
-        var prefixBuffer = LocalBufferWriter.Value!;
+        var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
@@ -80,7 +80,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            prefixBuffer.Dispose();
+            ReturnBufferWriter(prefixBuffer);
         }
     }
 
@@ -106,7 +106,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TKey> GetAllKeysByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> prefixSerializer)
     {
-        var prefixBuffer = LocalBufferWriter.Value!;
+        var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
@@ -125,13 +125,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            prefixBuffer.Dispose();
+            ReturnBufferWriter(prefixBuffer);
         }
     }
 
     public IEnumerable<TValue> GetAllValuesByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> prefixSerializer)
     {
-        var prefixBuffer = LocalBufferWriter.Value!;
+        var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
@@ -148,13 +148,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            prefixBuffer.Dispose();
+            ReturnBufferWriter(prefixBuffer);
         }
     }
 
     public TValue? GetFirstValueByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> serializer, SeekMode mode = SeekMode.SeekToFirst)
     {
-        var prefixBuffer = LocalBufferWriter.Value!;
+        var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
@@ -184,13 +184,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            prefixBuffer.Dispose();
+            ReturnBufferWriter(prefixBuffer);
         }
     }
 
     public IEnumerable<TValue> GetAllValuesByBounds(TKey startInclusive, TKey endExclusive)
     {
-        var buffer = LocalBufferWriter.Value!;
+        var buffer = RentBufferWriter();
         nint startKeyUnmanaged = IntPtr.Zero;
         nint endKeyUnmanaged = IntPtr.Zero;
 
@@ -223,7 +223,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         }
         finally
         {
-            buffer.Dispose();
+            ReturnBufferWriter(buffer);
             if (startKeyUnmanaged != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(startKeyUnmanaged);
@@ -233,6 +233,26 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
             {
                 Marshal.FreeHGlobal(endKeyUnmanaged);
             }
+        }
+    }
+
+    protected ArrayPoolBufferWriter RentBufferWriter()
+    {
+        var localThreadBufferWriter = _localBufferWriter.Value!;
+        return localThreadBufferWriter.TryAcquireBuffer()
+            ? localThreadBufferWriter
+            : ArrayPoolBufferWriter.Pool.Get();
+    }
+
+    protected void ReturnBufferWriter(ArrayPoolBufferWriter writer)
+    {
+        if (writer.FromPool)
+        {
+            ArrayPoolBufferWriter.Pool.Return(writer);
+        }
+        else
+        {
+            writer.Dispose();
         }
     }
 

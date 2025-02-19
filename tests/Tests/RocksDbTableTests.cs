@@ -666,6 +666,41 @@ public class RocksDbTableTests : IDisposable
 
     #endregion
 
+
+    #region GetAllKeysByPrefix
+
+    [Fact]
+    public void GetAllKeysByPrefixAndRemove_ShouldRemainOnlyExpectedRows()
+    {
+        // Arrange
+        var table = _rocksDb.CreateTable(x => x, MemoryPackRocksDbSerializer<MemoryPackWithDateOnlyModel>.Default, MemoryPackRocksDbSerializer<MemoryPackWithDateOnlyModel>.Default);
+
+        var removingRows = Enumerable.Range(1, 30)
+            .Select(i => new MemoryPackWithDateOnlyModel(new DateOnly(2025, 02, 18), i, "Name" + i))
+            .ToArray();
+
+        var mainRows = Enumerable.Range(1, 30)
+            .Select(i => new MemoryPackWithDateOnlyModel(new DateOnly(2025, 02, 19), i, "Name" + i))
+            .ToArray();
+
+        foreach (var testRow in mainRows.Concat(removingRows))
+        {
+            table.Put(testRow);
+        }
+
+        // Act
+        foreach (var item in table.GetAllKeysByPrefix(new DateOnly(2025, 02, 18), MemoryPackRocksDbSerializer<DateOnly>.Default))
+        {
+            table.Remove(item);
+        }
+
+        // Assert
+        table.GetAllKeys().Should().BeEquivalentTo(mainRows);
+    }
+
+    #endregion
+
+
     public void Dispose()
     {
         _rocksDb.Dispose();

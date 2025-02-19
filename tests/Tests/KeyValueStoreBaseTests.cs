@@ -497,7 +497,7 @@ public class KeyValueStoreBaseTests : IDisposable
 
     private static byte[] Serialize<T>(IRockSerializer<T> serializer, T value)
     {
-        var writer = new ArrayPoolBufferWriter();
+        var writer = new ArrayPoolBufferWriter(false);
         try
         {
             serializer.Serialize(writer, value);

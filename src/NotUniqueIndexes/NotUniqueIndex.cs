@@ -39,7 +39,7 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
     public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var key = _keyProvider(value);
-        var buffer = LocalBufferWriter.Value!;
+        var buffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(buffer, key);
@@ -48,14 +48,14 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
         }
         finally
         {
-            buffer.Dispose();
+            ReturnBufferWriter(buffer);
         }
     }
 
     public void Put<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var newKey = _keyProvider(newValue);
-        var keyBuffer = LocalBufferWriter.Value!;
+        var keyBuffer = RentBufferWriter();
         try
         {
             var needAddReference = false;
@@ -91,7 +91,7 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
         }
         finally
         {
-            keyBuffer.Dispose();
+            ReturnBufferWriter(keyBuffer);
         }
     }
 

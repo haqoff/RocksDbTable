@@ -125,7 +125,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public void Remove<TWrapper>(TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
-        var buffer = LocalBufferWriter.Value!;
+        var buffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(buffer, primaryKey);
@@ -168,7 +168,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
         }
         finally
         {
-            buffer.Dispose();
+            ReturnBufferWriter(buffer);
         }
     }
 
@@ -205,7 +205,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
     public void Put<TWrapper>(TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var key = _keyProvider(newValue);
-        var buffer = LocalBufferWriter.Value!;
+        var buffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(buffer, key);
@@ -243,7 +243,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
         }
         finally
         {
-            buffer.Dispose();
+            ReturnBufferWriter(buffer);
         }
     }
 

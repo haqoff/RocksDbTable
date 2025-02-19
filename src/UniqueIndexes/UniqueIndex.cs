@@ -22,7 +22,7 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
 
     public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
-        var bufferWriter = LocalBufferWriter.Value!;
+        var bufferWriter = RentBufferWriter();
         try
         {
             var uniqueKey = _keyProvider(value);
@@ -31,14 +31,14 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
         }
         finally
         {
-            bufferWriter.Dispose();
+            ReturnBufferWriter(bufferWriter);
         }
     }
 
     public void Put<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         var newKey = _keyProvider(newValue);
-        var keyBuffer = LocalBufferWriter.Value!;
+        var keyBuffer = RentBufferWriter();
         try
         {
             var needAddReference = false;
@@ -67,7 +67,7 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
         }
         finally
         {
-            keyBuffer.Dispose();
+            ReturnBufferWriter(keyBuffer);
         }
     }
 }

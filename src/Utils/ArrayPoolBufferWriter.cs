@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.ObjectPool;
 
 namespace RocksDbTable.Utils;
 
@@ -11,19 +12,36 @@ internal sealed class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
     private readonly int _initialCapacity;
     private byte[]? _rentedBuffer;
     private int _writtenSize;
+    private bool _inUse;
 
-    public ArrayPoolBufferWriter(int initialCapacity = 256)
+    internal static readonly DefaultObjectPool<ArrayPoolBufferWriter> Pool = new(new ArrayPoolBufferWriterObjectPolicy(), maximumRetained: 128);
+
+    public ArrayPoolBufferWriter(bool fromPool, int initialCapacity = 256)
     {
         Debug.Assert(initialCapacity > 0);
+        FromPool = fromPool;
         _initialCapacity = initialCapacity;
         _writtenSize = 0;
     }
 
+    public bool FromPool { get; }
+    public bool InUse => _inUse;
     public int WrittenCount => _writtenSize;
     public int Capacity => _rentedBuffer?.Length ?? 0;
     public int FreeCapacity => Capacity - _writtenSize;
     public ReadOnlyMemory<byte> WrittenMemory => _rentedBuffer == null ? ReadOnlyMemory<byte>.Empty : _rentedBuffer.AsMemory(0, _writtenSize);
     public ReadOnlySpan<byte> WrittenSpan => _rentedBuffer == null ? ReadOnlySpan<byte>.Empty : _rentedBuffer.AsSpan(0, _writtenSize);
+
+    public bool TryAcquireBuffer()
+    {
+        if (_inUse)
+        {
+            return false;
+        }
+
+        _inUse = true;
+        return true;
+    }
 
     public void Reset()
     {
@@ -58,6 +76,7 @@ internal sealed class ArrayPoolBufferWriter : IBufferWriter<byte>, IDisposable
     public void Dispose()
     {
         _writtenSize = 0;
+        _inUse = false;
         if (_rentedBuffer != null)
         {
             ArrayPool<byte>.Shared.Return(_rentedBuffer);
