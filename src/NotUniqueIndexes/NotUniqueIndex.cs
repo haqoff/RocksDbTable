@@ -4,6 +4,7 @@ using RocksDbTable.Core;
 using RocksDbTable.Options;
 using RocksDbTable.Serialization;
 using RocksDbTable.Tables;
+using RocksDbTable.Tracing;
 using RocksDbTable.Transactions;
 using RocksDbTable.Utils;
 
@@ -38,12 +39,14 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
 
     public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.NotUniqueIndexRemove);
         var key = _keyProvider(value);
         var buffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(buffer, key);
             AppendSpanToBuffer(buffer, primaryKeySpan);
+            activity.SetKeyToActivity(buffer.WrittenSpan);
             transaction.CommandWrapper.Delete(buffer.WrittenSpan, ColumnFamilyHandle);
         }
         finally
@@ -54,6 +57,7 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
 
     public void Put<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.NotUniqueIndexPut);
         var newKey = _keyProvider(newValue);
         var keyBuffer = RentBufferWriter();
         try
@@ -68,8 +72,10 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
                 var oldKey = _keyProvider(oldValue);
                 if (!EqualityComparer<TNotUniqueKey>.Default.Equals(newKey, oldKey))
                 {
+                    using var removeOldKeyActivity = StartActivity(ActivityNames.NotUniqueIndexPutRemoveOldKey);
                     KeySerializer.Serialize(keyBuffer, oldKey);
                     AppendSpanToBuffer(keyBuffer, primaryKeySpan);
+                    removeOldKeyActivity.SetKeyToActivity(keyBuffer.WrittenSpan);
 
                     transaction.CommandWrapper.Delete(keyBuffer.WrittenSpan, ColumnFamilyHandle);
                     keyBuffer.Reset();
@@ -81,6 +87,7 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
             {
                 KeySerializer.Serialize(keyBuffer, newKey);
                 AppendSpanToBuffer(keyBuffer, primaryKeySpan);
+                activity.SetKeyToActivity(keyBuffer.WrittenSpan);
 
                 // For Reference store mode: although we already store the primary key of the table in the key of this ColumnFamily, 
                 // we still include the primary key in the record's value. This is because we cannot efficiently 

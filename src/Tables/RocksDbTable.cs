@@ -8,6 +8,7 @@ using RocksDbTable.Extensions;
 using RocksDbTable.NotUniqueIndexes;
 using RocksDbTable.Options;
 using RocksDbTable.Serialization;
+using RocksDbTable.Tracing;
 using RocksDbTable.Transactions;
 using RocksDbTable.UniqueIndexes;
 
@@ -44,6 +45,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public bool TryApplyChange<TChange>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, WriteOptions? writeOptions = null)
     {
+        using var activity = StartActivity(ActivityNames.TableTryApplyChangeNoTransactionSpecified);
         var transaction = RocksDb.CreateTransaction(writeOptions);
         try
         {
@@ -59,6 +61,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public bool TryApplyChange<TChange, TWrapper>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.TableTryApplyChangeCore);
         var takenLock = AcquireLockIfRequired(primaryKey, ref transaction);
         var currentValue = GetByKey(primaryKey);
         var applied = tryApplyDelegate(primaryKey, currentValue, change, out newValue);
@@ -95,6 +98,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public void Remove(TPrimaryKey primaryKey, WriteOptions? writeOptions = null)
     {
+        using var activity = StartActivity(ActivityNames.TableRemoveNoTransactionSpecified);
         if (_dependentIndexes.Count == 0)
         {
             var transaction = RocksDb.CreateMockedTransaction(writeOptions);
@@ -125,10 +129,12 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public void Remove<TWrapper>(TPrimaryKey primaryKey, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.TableRemoveCore);
         var buffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(buffer, primaryKey);
+            activity.SetKeyToActivity(buffer.WrittenSpan);
 
             TValue? currentValue = default;
             var currentValueWasRetrieved = false;
@@ -174,6 +180,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public void Put(TValue newValue, WriteOptions? writeOptions = null)
     {
+        using var activity = StartActivity(ActivityNames.TablePutNoTransactionSpecified);
         if (_dependentIndexes.Count == 0)
         {
             var transaction = RocksDb.CreateMockedTransaction(writeOptions);
@@ -204,6 +211,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
     public void Put<TWrapper>(TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.TablePutCore);
         var key = _keyProvider(newValue);
         var buffer = RentBufferWriter();
         try
@@ -215,6 +223,7 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
 
             var keySpan = keyPoint.GetWrittenSpan(buffer);
             var valueSpan = valuePoint.GetWrittenSpan(buffer);
+            activity.SetKeyToActivity(keySpan).SetValueToActivity(valueSpan);
 
             TValue? oldValue = default;
             var oldValueWasRetrieved = false;

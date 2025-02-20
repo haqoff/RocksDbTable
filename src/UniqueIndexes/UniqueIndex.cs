@@ -4,6 +4,7 @@ using RocksDbTable.Core;
 using RocksDbTable.Options;
 using RocksDbTable.Serialization;
 using RocksDbTable.Tables;
+using RocksDbTable.Tracing;
 using RocksDbTable.Transactions;
 
 namespace RocksDbTable.UniqueIndexes;
@@ -22,11 +23,13 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
 
     public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.UniqueIndexRemove);
         var bufferWriter = RentBufferWriter();
         try
         {
             var uniqueKey = _keyProvider(value);
             KeySerializer.Serialize(bufferWriter, uniqueKey);
+            activity.SetKeyToActivity(bufferWriter.WrittenSpan);
             transaction.CommandWrapper.Delete(bufferWriter.WrittenSpan, ColumnFamilyHandle);
         }
         finally
@@ -37,6 +40,7 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
 
     public void Put<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, ReadOnlySpan<byte> valueSpan, TValue? oldValue, TValue newValue, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
+        using var activity = StartActivity(ActivityNames.UniqueIndexPut);
         var newKey = _keyProvider(newValue);
         var keyBuffer = RentBufferWriter();
         try
@@ -51,7 +55,9 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
                 var oldKey = _keyProvider(oldValue);
                 if (!EqualityComparer<TUniqueKey>.Default.Equals(newKey, oldKey))
                 {
+                    using var removeOldKeyActivity = StartActivity(ActivityNames.UniqueIndexPutRemoveOldKey);
                     KeySerializer.Serialize(keyBuffer, oldKey);
+                    removeOldKeyActivity.SetKeyToActivity(keyBuffer.WrittenSpan);
                     transaction.CommandWrapper.Delete(keyBuffer.WrittenSpan, ColumnFamilyHandle);
                     keyBuffer.Reset();
                     needAddReference = true;
@@ -61,6 +67,7 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
             if (_indexOptions.StoreMode == ValueStoreMode.FullValue || (_indexOptions.StoreMode == ValueStoreMode.Reference && needAddReference))
             {
                 KeySerializer.Serialize(keyBuffer, newKey);
+                activity.SetKeyToActivity(keyBuffer.WrittenSpan);
                 var serializedValue = _indexOptions.StoreMode == ValueStoreMode.FullValue ? valueSpan : primaryKeySpan;
                 transaction.CommandWrapper.Put(keyBuffer.WrittenSpan, serializedValue, ColumnFamilyHandle);
             }

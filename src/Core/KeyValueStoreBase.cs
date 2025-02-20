@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using RocksDbSharp;
 using RocksDbTable.Options;
 using RocksDbTable.Serialization;
 using RocksDbTable.Tables;
+using RocksDbTable.Tracing;
 using RocksDbTable.Utils;
 
 namespace RocksDbTable.Core;
@@ -32,15 +34,18 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public TValue? GetByKey(ReadOnlySpan<byte> key)
     {
+        using var activity = StartActivity(ActivityNames.GetByKeySpan).SetKeyToActivity(key);
         return RocksDb.Get(key, ValueDeserializer, ColumnFamilyHandle);
     }
 
     public TValue? GetByKey(TKey key)
     {
+        using var activity = StartActivity(ActivityNames.GetByKey);
         var keyBuffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(keyBuffer, key);
+            activity.SetKeyToActivity(keyBuffer.WrittenSpan);
             return RocksDb.Get(keyBuffer.WrittenSpan, ValueDeserializer, ColumnFamilyHandle);
         }
         finally
@@ -51,10 +56,12 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public bool HasExactKey(TKey uniqueKey)
     {
+        using var activity = StartActivity(ActivityNames.HasExactKey);
         var keyBuffer = RentBufferWriter();
         try
         {
             KeySerializer.Serialize(keyBuffer, uniqueKey);
+            activity.SetKeyToActivity(keyBuffer.WrittenSpan);
             return RocksDb.HasKey(keyBuffer.WrittenSpan, ColumnFamilyHandle);
         }
         finally
@@ -65,11 +72,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public bool HasAnyKeyByPrefix<TPrefixKey>(TPrefixKey key, IRockSerializer<TPrefixKey> serializer)
     {
+        using var activity = StartActivity(ActivityNames.HasAnyKeyByPrefix);
         var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
             serializer.Serialize(prefixBuffer, key);
+            activity.SetKeyToActivity(prefixBuffer.WrittenSpan);
             iterator.Seek(prefixBuffer.WrittenSpan);
             if (!iterator.Valid())
             {
@@ -86,6 +95,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TKey> GetAllKeys()
     {
+        using var activity = StartActivity(ActivityNames.GetAllKeys);
         using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
         for (iterator.SeekToFirst(); iterator.Valid(); iterator.Next())
         {
@@ -96,6 +106,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TValue> GetAllValues()
     {
+        using var activity = StartActivity(ActivityNames.GetAllValues);
         using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
         for (iterator.SeekToFirst(); iterator.Valid(); iterator.Next())
         {
@@ -106,11 +117,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TKey> GetAllKeysByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> prefixSerializer)
     {
+        using var activity = StartActivity(ActivityNames.GetAllKeysByPrefix);
         var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
             prefixSerializer.Serialize(prefixBuffer, prefixKey);
+            activity.SetKeyToActivity(prefixBuffer.WrittenSpan);
             for (iterator.Seek(prefixBuffer.WrittenSpan); iterator.Valid(); iterator.Next())
             {
                 var keySpan = iterator.GetKeySpan();
@@ -131,11 +144,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TValue> GetAllValuesByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> prefixSerializer)
     {
+        using var activity = StartActivity(ActivityNames.GetAllValuesByPrefix);
         var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
             prefixSerializer.Serialize(prefixBuffer, prefixKey);
+            activity.SetKeyToActivity(prefixBuffer.WrittenSpan);
             for (iterator.Seek(prefixBuffer.WrittenSpan); iterator.Valid(); iterator.Next())
             {
                 if (!iterator.GetKeySpan().StartsWith(prefixBuffer.WrittenSpan))
@@ -154,12 +169,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public TValue? GetFirstValueByPrefix<TPrefixKey>(TPrefixKey prefixKey, IRockSerializer<TPrefixKey> serializer, SeekMode mode = SeekMode.SeekToFirst)
     {
+        using var activity = StartActivity(ActivityNames.GetFirstValueByPrefix);
         var prefixBuffer = RentBufferWriter();
         try
         {
             using var iterator = RocksDb.NewIterator(ColumnFamilyHandle);
             serializer.Serialize(prefixBuffer, prefixKey);
-
+            activity.SetKeyToActivity(prefixBuffer.WrittenSpan);
             if (mode == SeekMode.SeekToPrev)
             {
                 iterator.SeekForPrev(prefixBuffer.WrittenSpan);
@@ -190,6 +206,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
     public IEnumerable<TValue> GetAllValuesByBounds(TKey startInclusive, TKey endExclusive)
     {
+        using var activity = StartActivity(ActivityNames.GetAllValuesByBounds);
         var buffer = RentBufferWriter();
         nint startKeyUnmanaged = IntPtr.Zero;
         nint endKeyUnmanaged = IntPtr.Zero;
@@ -204,6 +221,7 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
 
             var startKeySpan = startKeyPoint.GetWrittenSpan(buffer);
             var endKeySpan = endKeyPoint.GetWrittenSpan(buffer);
+            activity.SetRangeKeysToActivity(startKeySpan, endKeySpan);
 
             var options = new ReadOptions();
 
@@ -254,6 +272,13 @@ internal abstract class KeyValueStoreBase<TKey, TValue> : IKeyValueStoreBase<TKe
         {
             writer.Dispose();
         }
+    }
+
+    protected Activity? StartActivity(string name)
+    {
+        var activity = RocksDbTableInstrumentation.ActivitySource.StartActivity(name, ActivityKind.Client);
+        activity?.SetTag("columnFamily", _options.ColumnFamilyName);
+        return activity;
     }
 
     /// <summary>

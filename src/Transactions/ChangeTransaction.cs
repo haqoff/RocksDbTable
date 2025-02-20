@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using RocksDbSharp;
 using RocksDbTable.ChangeTracking;
+using RocksDbTable.Tracing;
 
 namespace RocksDbTable.Transactions;
 
@@ -36,13 +37,16 @@ public ref struct ChangeTransaction<TWrapper>
 
     public void Commit()
     {
+        using var activity = RocksDbTableInstrumentation.ActivitySource.StartActivity(ActivityNames.ChangeTransactionCommit, ActivityKind.Client);
         if (_writeBatch is not null)
         {
             _rocksDb.Write(_writeBatch, _writeOptions);
+            activity?.SetTag("hasWriteBatch", "");
         }
 
         if (_changes is not null)
         {
+            using var dispatchChangeActivity = RocksDbTableInstrumentation.ActivitySource.StartActivity(ActivityNames.ChangeTransactionCommitDispatchChanges, ActivityKind.Client);
             foreach (var change in _changes)
             {
                 change.Dispatch();
