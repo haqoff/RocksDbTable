@@ -101,4 +101,7 @@ public class TableOptions<TKey, TValue> : IStoreOptions
         LockCount = lockCount;
         return this;
     }
+
+    void IStoreOptions.SetColumnFamilyName(string name) => SetColumnFamilyName(name);
+    void IStoreOptions.SetColumnFamilyOptions(ColumnFamilyOptions options) => SetColumnFamilyOptions(options);
 }

@@ -63,4 +63,7 @@ public class IndexOptions : IStoreOptions
         StoreMode = mode;
         return this;
     }
+    
+    void IStoreOptions.SetColumnFamilyName(string name) => SetColumnFamilyName(name);
+    void IStoreOptions.SetColumnFamilyOptions(ColumnFamilyOptions options) => SetColumnFamilyOptions(options);
 }

@@ -17,6 +17,11 @@ namespace RocksDbTable.Tables;
 public interface IRocksDbTable<TPrimaryKey, TValue> : IUniqueIndex<TPrimaryKey, TValue>
 {
     /// <summary>
+    /// Gets the names of all <c>columnFamilies</c> used in the table (including indexes).
+    /// </summary>
+    string[] GetUsedColumnFamilyNames();
+
+    /// <summary>
     /// Performs an atomic update based on a row lock. (This is not a Merge operation from RocksDb)
     /// Makes sense to use if <see cref="TableOptions{TKey,TValue}.SetEnableConcurrentChangesWithinRow"/><c>(true)</c> was called.
     /// </summary>

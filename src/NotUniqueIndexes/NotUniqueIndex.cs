@@ -37,6 +37,8 @@ internal sealed class NotUniqueIndex<TNotUniqueKey, TValue> : KeyValueStoreBase<
         return GetAllValuesByPrefix(key, KeySerializer);
     }
 
+    public IStoreOptions StoreOptions => _indexOptions;
+
     public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         using var activity = StartActivity(ActivityNames.NotUniqueIndexRemove);

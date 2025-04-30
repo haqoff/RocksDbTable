@@ -43,6 +43,18 @@ internal sealed class RocksDbTable<TPrimaryKey, TValue> : KeyValueStoreBase<TPri
         }
     }
 
+    public string[] GetUsedColumnFamilyNames()
+    {
+        var result = new string[1 + _dependentIndexes.Count];
+        result[0] = ((IStoreOptions)_tableOptions).ColumnFamilyName;
+        for (int i = 0; i < _dependentIndexes.Count; i++)
+        {
+            result[i + 1] = _dependentIndexes[i].StoreOptions.ColumnFamilyName;
+        }
+
+        return result;
+    }
+
     public bool TryApplyChange<TChange>(TPrimaryKey primaryKey, TChange change, ChangeApplierDelegate<TPrimaryKey, TValue, TChange> tryApplyDelegate, out TValue? newValue, WriteOptions? writeOptions = null)
     {
         using var activity = StartActivity(ActivityNames.TableTryApplyChangeNoTransactionSpecified);

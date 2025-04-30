@@ -21,6 +21,8 @@ internal sealed class UniqueIndex<TUniqueKey, TValue> : KeyValueStoreBase<TUniqu
         _indexOptions = indexOptions;
     }
 
+    public IStoreOptions StoreOptions => _indexOptions;
+
     public void Remove<TWrapper>(ReadOnlySpan<byte> primaryKeySpan, TValue value, ref ChangeTransaction<TWrapper> transaction) where TWrapper : IRocksDbCommandWrapper
     {
         using var activity = StartActivity(ActivityNames.UniqueIndexRemove);

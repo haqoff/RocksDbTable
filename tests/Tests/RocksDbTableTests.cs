@@ -22,6 +22,46 @@ public class RocksDbTableTests : IDisposable
         _rocksDb = TestHelper.CreateTempRocksDb(out _rocksDbPath);
     }
 
+    #region GetUsedColumnFamilyNames
+
+    [Fact]
+    public void GetUsedColumnFamilyNames_ShouldReturnCorrectNamesWithIndexes()
+    {
+        // Arrange
+        var table = CreateStudentTable(opt => opt.SetColumnFamilyName("students"));
+        _ = table.CreateNotUniqueIndex(s => s.Name, StringRockSerializer.Utf8, opt =>
+        {
+            opt.SetColumnFamilyName("idx_name");
+        });
+        _ = table.CreateUniqueIndex(s => s.PassportId, StringRockSerializer.Utf8, opt =>
+        {
+            opt.SetColumnFamilyName("idx_passport_id");
+        });
+
+        // Act
+        var actualNames = table.GetUsedColumnFamilyNames();
+
+        // Assert
+        var expectedNames = new[] { "students", "idx_name", "idx_passport_id" };
+        actualNames.Should().BeEquivalentTo(expectedNames);
+    }
+
+    [Fact]
+    public void GetUsedColumnFamilyNames_ShouldReturnCorrectNameWhenNoIndexes()
+    {
+        // Arrange
+        var table = CreateStudentTable(opt => opt.SetColumnFamilyName("students"));
+
+        // Act
+        var actualNames = table.GetUsedColumnFamilyNames();
+
+        // Assert
+        var expectedNames = new[] { "students" };
+        actualNames.Should().BeEquivalentTo(expectedNames);
+    }
+
+    #endregion
+
     #region Put
 
     [Fact]
