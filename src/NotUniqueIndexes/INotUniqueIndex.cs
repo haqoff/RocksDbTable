@@ -4,6 +4,11 @@ using RocksDbTable.Options;
 
 namespace RocksDbTable.NotUniqueIndexes;
 
+/// <summary>
+/// Provides methods for working with a non-unique index.
+/// </summary>
+/// <typeparam name="TNotUniqueKey">Index key.</typeparam>
+/// <typeparam name="TValue">Value type (row type).</typeparam>
 public interface INotUniqueIndex<in TNotUniqueKey, out TValue> : IKeyValueStoreBase<TNotUniqueKey, TValue>
 {
     /// <summary>

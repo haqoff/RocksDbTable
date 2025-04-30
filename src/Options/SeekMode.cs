@@ -1,5 +1,8 @@
 ﻿namespace RocksDbTable.Options;
 
+/// <summary>
+/// The seek mode to use.
+/// </summary>
 public enum SeekMode : byte
 {
     /// <summary>

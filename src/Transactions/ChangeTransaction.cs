@@ -7,6 +7,13 @@ using RocksDbTable.Tracing;
 
 namespace RocksDbTable.Transactions;
 
+/// <summary>
+/// Represents a transactional context for applying a batch of changes to RocksDb.
+/// </summary>
+/// <typeparam name="TWrapper">
+/// The type of the command wrapper implementing <see cref="IRocksDbCommandWrapper"/> 
+/// that provides context for database operations.
+/// </typeparam>
 public ref struct ChangeTransaction<TWrapper>
     where TWrapper : IRocksDbCommandWrapper
 {
@@ -35,6 +42,9 @@ public ref struct ChangeTransaction<TWrapper>
         (_changes ??= new List<ITableChange>(4)).Add(tableChange);
     }
 
+    /// <summary>
+    /// Commits the transaction.
+    /// </summary>
     public void Commit()
     {
         using var activity = RocksDbTableInstrumentation.ActivitySource.StartActivity(ActivityNames.ChangeTransactionCommit, ActivityKind.Client);
@@ -58,6 +68,9 @@ public ref struct ChangeTransaction<TWrapper>
         ExitLocks();
     }
 
+    /// <summary>
+    /// Disposes the transaction by releasing resources.
+    /// </summary>
     public void Dispose()
     {
         _writeBatch?.Dispose();

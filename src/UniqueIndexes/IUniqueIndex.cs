@@ -4,6 +4,11 @@ using RocksDbTable.Serialization;
 
 namespace RocksDbTable.UniqueIndexes;
 
+/// <summary>
+/// Provides methods for working with a unique index.
+/// </summary>
+/// <typeparam name="TUniqueKey">Index key.</typeparam>
+/// <typeparam name="TValue">Value type (row type).</typeparam>
 public interface IUniqueIndex<TUniqueKey, out TValue> : IKeyValueStoreBase<TUniqueKey, TValue>
 {
     /// <summary>

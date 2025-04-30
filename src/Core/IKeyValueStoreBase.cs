@@ -4,6 +4,11 @@ using RocksDbTable.Serialization;
 
 namespace RocksDbTable.Core;
 
+/// <summary>
+/// Provides basic methods for working with RocksDb storage.
+/// </summary>
+/// <typeparam name="TKey">Key type.</typeparam>
+/// <typeparam name="TValue">Value type (row type).</typeparam>
 public interface IKeyValueStoreBase<in TKey, out TValue>
 {
     /// <summary>
